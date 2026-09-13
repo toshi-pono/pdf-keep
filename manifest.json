@@ -7,7 +7,7 @@
   "documentAccess": "dynamic-page",
   "networkAccess": {
     "allowedDomains": ["https://fonts.gstatic.com"],
-    "reasoning": "Google Fonts の公式配信元から静的 TTF を取得して PDF に埋め込みます。文書の文字列や画像は送信しません。"
+    "reasoning": "Downloads static TTF files from the official Google Fonts CDN for embedding in PDFs. Document text and images are not uploaded."
   },
   "id": "paper-pdf-local-development"
 }

@@ -52,6 +52,8 @@ This runs ESLint, Prettier’s formatting check, TypeScript, unit and integratio
 
 Build before running a browser command directly. Use `PLAYWRIGHT_CHANNEL=chrome` to test with an installed Chrome instead of Playwright’s Chromium. Set `POPPLER_BIN` to override the Poppler executable directory; macOS also checks `/opt/homebrew/opt/poppler/bin`.
 
+The shared browser harness disables font hinting so Linux screen-pixel adjustments do not change glyph advances relative to the PDF's scalable font metrics. Visual tests still check glyph coverage, decoration placement, and layout; the opacity comparison allows a difference of up to three 8-bit color levels between Chromium and Poppler.
+
 Screenshots, comparisons, and extracted data go to `tmp/qa/`; generated PDFs go to `output/pdf/`. Both are ignored by Git.
 
 ## Project structure
@@ -113,6 +115,8 @@ The searchable PDF exporter losslessly compresses its flattened RGB background w
 
 ## Distribution and CI
 
+The English Community gallery images are `assets/teaser-en.png` (cover) and `assets/subteaser-features-en.png` (feature overview), both 1920 × 1080 px. Run `npm run render:promo` to rebuild them with actual screenshots of the current English UI. This requires Playwright Chromium; temporary HTML and screenshots stay in the ignored `tmp/promo/` directory. Upload the cover first and the feature overview second when publishing to Figma Community.
+
 ```sh
 npm run package
 ```
@@ -121,4 +125,15 @@ This creates `output/pdf-keep-plugin.zip` from an explicit set of runtime files,
 
 GitHub Actions (`.github/workflows/ci.yml`) runs on pushes and pull requests. Separate jobs check source/build output and browser/PDF behavior. The workflow uploads build files and QA results as artifacts. Live-network tests remain opt-in.
 
-The manifest currently has a local-development plugin ID. Figma Community publication is separate from publishing this repository and requires the ID issued by Figma. Keep the existing font-storage key when changing public branding so saved fonts remain accessible.
+## Figma Community publication
+
+`manifest.json`'s `api: "1.0.0"` selects the Figma API version. It is independent of the product version in `package.json` and `package-lock.json`, currently both `0.1.0`. Do not copy the package version into `api` or add a product `version` field to the manifest. Use `npm version patch --no-git-tag-version` when intentionally bumping a patch release; this updates both package files. The npm `private: true` setting prevents npm publication and can stay enabled for a Figma plugin. See the [manifest specification](https://developers.figma.com/docs/plugins/manifest/).
+
+Before the first Community submission:
+
+1. Create the plugin registration in Figma Desktop and replace `manifest.json`'s `paper-pdf-local-development` ID with the ID issued by Figma. Copy only the ID; keep the existing `dist/code.js` and `dist/ui.html` paths and other settings. Keep that ID for subsequent updates.
+2. Enable two-factor authentication for the publishing account and prepare a support contact. Use the current English description, logo and gallery images in the publishing dialog; they are not manifest fields.
+3. Run `npm run check` and verify PDF saving in the Figma Desktop development plugin. Confirm Google Fonts loading, searchable text and the exported appearance. Rebuild after changing source files.
+4. Open **Plugins → Manage plugins → Publish** in Figma Desktop and submit the built plugin for review. Publishing the GitHub repository or creating a distribution ZIP does not submit to Community.
+
+The existing `editorType: ["figma"]`, `documentAccess: "dynamic-page"`, and network allowlist restricted to `https://fonts.gstatic.com` match the current implementation. No additional user or team permissions are needed. Keep the existing font-storage key so future updates preserve saved fonts within the same plugin identity. See Figma's [publishing instructions](https://help.figma.com/hc/en-us/articles/360042293394-Publish-classic-plugins-to-the-Figma-Community).

@@ -28,7 +28,8 @@
     "test:network": "node --import tsx --test tests/network/*.test.mjs",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "npm run lint -- --fix",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "render:promo": "npm run build && node scripts/render-promo.mjs"
   },
   "dependencies": {
     "fast-png": "^8.0.0",

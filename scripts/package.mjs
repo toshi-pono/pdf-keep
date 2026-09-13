@@ -13,6 +13,7 @@ const files = [
   "docs/development.md",
   "assets/logo.png",
   "assets/teaser-en.png",
+  "assets/subteaser-features-en.png",
   "licenses",
 ];
 await mkdir("output", { recursive: true });

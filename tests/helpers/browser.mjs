@@ -5,6 +5,9 @@ import { existsSync } from "node:fs";
 export const launchBrowser = () =>
   chromium.launch({
     headless: true,
+    // Linux screen hinting changes glyph advances and drifts from the PDF's
+    // scalable font metrics. Keep reference geometry consistent across OSes.
+    args: ["--font-render-hinting=none"],
     ...(process.env.PLAYWRIGHT_CHANNEL
       ? { channel: process.env.PLAYWRIGHT_CHANNEL }
       : {}),
