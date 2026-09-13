@@ -9,5 +9,5 @@
     "allowedDomains": ["https://fonts.gstatic.com"],
     "reasoning": "Downloads static TTF files from the official Google Fonts CDN for embedding in PDFs. Document text and images are not uploaded."
   },
-  "id": "paper-pdf-local-development"
+  "id": "1681089320786833087"
 }

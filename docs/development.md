@@ -131,7 +131,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on pushes and pull requests. Se
 
 Before the first Community submission:
 
-1. Create the plugin registration in Figma Desktop and replace `manifest.json`'s `paper-pdf-local-development` ID with the ID issued by Figma. Copy only the ID; keep the existing `dist/code.js` and `dist/ui.html` paths and other settings. Keep that ID for subsequent updates.
+1. Use the existing PDF Keep registration: `manifest.json` already contains its Figma-issued ID, `1681089320786833087`. Keep that ID for subsequent updates. If publishing an independent fork as a separate plugin, obtain your own ID from Figma and replace only the ID, preserving the build paths and other settings.
 2. Enable two-factor authentication for the publishing account and prepare a support contact. Use the current English description, logo and gallery images in the publishing dialog; they are not manifest fields.
 3. Run `npm run check` and verify PDF saving in the Figma Desktop development plugin. Confirm Google Fonts loading, searchable text and the exported appearance. Rebuild after changing source files.
 4. Open **Plugins → Manage plugins → Publish** in Figma Desktop and submit the built plugin for review. Publishing the GitHub repository or creating a distribution ZIP does not submit to Community.
