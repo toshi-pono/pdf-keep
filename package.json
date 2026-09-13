@@ -1,0 +1,64 @@
+{
+  "name": "pdf-keep",
+  "version": "0.1.0",
+  "description": "A Figma plugin for exporting lightweight PDFs with flattened backgrounds and searchable, copyable text.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/toshi-pono/pdf-keep.git"
+  },
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:browser": "node --test --test-concurrency=1 tests/browser/*.test.mjs",
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm test && npm run build && npm run test:browser",
+    "test:ui": "node --test --test-concurrency=1 tests/browser/ui-*.test.mjs",
+    "format": "prettier --write .",
+    "package": "npm run build && node scripts/package.mjs",
+    "test:transforms": "node --test tests/browser/transforms.test.mjs",
+    "test:subsets": "node --test tests/browser/subsets.test.mjs",
+    "test:outlines": "node --test tests/browser/outlines.test.mjs",
+    "test:rich-text": "node --test tests/browser/rich-text.test.mjs",
+    "test:searchable": "node --test tests/browser/searchable.test.mjs",
+    "test:unit": "node --import tsx --test tests/unit/*.test.*",
+    "test:integration": "node --import tsx --test tests/integration/*.test.ts",
+    "test:network": "node --import tsx --test tests/network/*.test.mjs",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "npm run lint -- --fix",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "fast-png": "^8.0.0",
+    "fast-text-encoding": "^1.0.6",
+    "harfbuzzjs": "1.6.1",
+    "jspdf": "^4.2.0",
+    "opentype.js": "^1.3.4",
+    "pdf-lib": "^1.17.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "svg2pdf.js": "^2.7.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@figma/plugin-typings": "latest",
+    "@types/node": "^22.0.0",
+    "@types/opentype.js": "^1.3.8",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "esbuild": "^0.25.0",
+    "eslint": "^10.10.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.12.0",
+    "playwright": "^1.55.0",
+    "prettier": "^3.9.6",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.70.0"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

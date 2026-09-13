@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build and package output
+/dist/
+/output/
+*.tsbuildinfo
+
+# Test output and temporary files
+/tmp/
+/coverage/
+/playwright-report/
+/test-results/
+*.log
+
+# Local environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# macOS metadata
+.DS_Store
+._*
+
+# Local development notes, experiments, and manual debugging tools
+/docs/work/

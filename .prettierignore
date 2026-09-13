@@ -1,0 +1,11 @@
+node_modules/
+dist/
+output/
+tmp/
+coverage/
+package-lock.json
+src/fonts/google-font-catalog.json
+docs/work/
+licenses/
+tests/fixtures/fonts/
+tests/fixtures/rich-text/

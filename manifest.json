@@ -1,0 +1,13 @@
+{
+  "name": "PDF Keep",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "ui": "dist/ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["https://fonts.gstatic.com"],
+    "reasoning": "Google Fonts の公式配信元から静的 TTF を取得して PDF に埋め込みます。文書の文字列や画像は送信しません。"
+  },
+  "id": "paper-pdf-local-development"
+}

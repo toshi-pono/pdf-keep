@@ -1,0 +1,567 @@
+* {
+  box-sizing: border-box;
+}
+:root {
+  font:
+    13px/1.5 Inter,
+    system-ui,
+    sans-serif;
+  color: var(--figma-color-text, #202532);
+  background: var(--figma-color-bg, #fff);
+  --border: var(--figma-color-border, #e1e4ea);
+  --muted: var(--figma-color-text-secondary, #727987);
+  --accent: var(--figma-color-bg-brand, #1769ef);
+}
+body {
+  margin: 0;
+}
+[hidden] {
+  display: none !important;
+}
+main {
+  height: 100dvh;
+  min-height: 360px;
+  display: flex;
+  flex-direction: column;
+}
+h2 {
+  font-size: 13px;
+  margin: 0 0 12px;
+  font-weight: 600;
+}
+.tabs {
+  display: flex;
+  padding: 0 8px;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.tabs button {
+  padding: 12px 16px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--muted);
+}
+.tabs button[aria-selected="true"] {
+  color: var(--figma-color-text-brand, #1769ef);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+.content {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+button,
+select {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--figma-color-bg, #fff);
+  padding: 9px 12px;
+}
+button {
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  background: var(--figma-color-bg-hover, #f3f5f8);
+}
+button:disabled,
+input:disabled,
+select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.muted,
+small {
+  color: var(--muted);
+}
+.selection-card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+}
+.selection-card > svg {
+  flex-shrink: 0;
+}
+.selection-info {
+  flex: 1;
+  min-width: 0;
+}
+#selection {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+#dimensions {
+  font-size: 12px;
+  margin-top: 2px;
+}
+.icon-button {
+  border: 0;
+  padding: 2px 5px;
+  font-size: 24px;
+  color: var(--muted);
+}
+.quality-section {
+  margin-top: 28px;
+}
+.scale-presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+.scale-presets button {
+  border-radius: 0;
+  padding: 12px 0;
+  margin-left: -1px;
+}
+.scale-presets button:first-child {
+  border-radius: 7px 0 0 7px;
+  margin-left: 0;
+}
+.scale-presets button:last-child {
+  border-radius: 0 7px 7px 0;
+}
+.scale-presets button[aria-pressed="true"] {
+  position: relative;
+  color: var(--figma-color-text-brand, #1769ef);
+  border-color: var(--accent);
+  background: var(--figma-color-bg-brand-tertiary, #edf4ff);
+  font-weight: 600;
+}
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.scale-custom {
+  margin-top: 18px;
+}
+.paper-orientation {
+  margin-top: 12px;
+}
+#paper-size {
+  max-width: 70%;
+  min-width: 0;
+}
+.quality-reference {
+  margin-bottom: 4px;
+}
+.stepper {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  overflow: hidden;
+}
+.stepper button {
+  border: 0;
+  border-radius: 0;
+  padding: 8px 10px;
+}
+.stepper input {
+  width: 62px;
+  padding: 8px 2px;
+  border: 0;
+  text-align: center;
+  background: transparent;
+  appearance: textfield;
+}
+.stepper input::-webkit-inner-spin-button {
+  appearance: none;
+}
+.stepper span {
+  color: var(--muted);
+  padding-right: 6px;
+}
+.output-summary {
+  margin-top: 18px;
+  font-size: 12px;
+  color: var(--muted);
+}
+#scale-hint {
+  white-space: pre-line;
+}
+#pdf-size-estimate {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+  margin-top: 4px;
+}
+.help-anchor {
+  display: inline-flex;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.help-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+  font-size: 13px;
+  cursor: help;
+}
+.help-tooltip {
+  position: fixed;
+  z-index: 1000;
+  width: max-content;
+  max-width: min(300px, calc(100vw - 16px));
+  padding: 9px 11px;
+  border-radius: 6px;
+  background: #252a34;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+  box-shadow: 0 4px 16px #0002;
+}
+.settings-link {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  border: 0;
+  padding: 12px 0;
+  margin-top: 12px;
+  text-align: left;
+  color: var(--muted);
+  font-size: 12px;
+}
+.mode-notice {
+  font-size: 12px;
+  color: var(--muted);
+}
+.section-heading,
+.section-title,
+.font-import {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-heading {
+  justify-content: space-between;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+#font-status {
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+#fonts {
+  max-height: 220px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+#fonts:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.font {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  border-bottom: 1px solid var(--border);
+  padding: 6px 2px;
+}
+.font:last-child {
+  border-bottom: 0;
+}
+.font-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.font-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.font-style {
+  color: var(--muted);
+  margin-left: 5px;
+  font-size: 12px;
+}
+.font-badge {
+  font-size: 13px;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.font-badge.ready {
+  color: var(--figma-color-text-success, #16846d);
+}
+.font-badge.missing {
+  color: var(--figma-color-text-warning, #946100);
+}
+.font-controls {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 8px;
+}
+.font-controls .check {
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.font-controls input {
+  margin: 0;
+}
+.font-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  color: var(--muted);
+}
+.quiet {
+  border: 0;
+  color: var(--muted);
+  padding: 2px 0;
+  font-size: 12px;
+}
+#retry-fonts {
+  padding: 6px 10px;
+}
+.secondary {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.font-import {
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+.file-input {
+  display: none;
+}
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+}
+.check input {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  margin: 2px 0 0;
+  flex-shrink: 0;
+}
+.processing-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.processing-row .check {
+  flex: 1;
+}
+.raster-section,
+.settings-section {
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+  margin-top: 18px;
+}
+#outline-notice {
+  font-size: 12px;
+  color: var(--muted);
+}
+.pixel-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+#long-edge {
+  padding: 8px 10px;
+  width: 140px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: transparent;
+}
+#language {
+  min-width: 140px;
+}
+.export-footer {
+  border-top: 1px solid var(--border);
+  padding: 16px 24px 20px;
+  flex-shrink: 0;
+  max-height: 50%;
+  overflow-y: auto;
+}
+.actions {
+  display: grid;
+  gap: 8px;
+}
+.actions button,
+.actions .download-button {
+  font-weight: 600;
+  padding: 11px;
+}
+button.primary,
+.actions .download-button {
+  background: var(--accent);
+  color: var(--figma-color-text-onbrand, #fff);
+  border-color: var(--accent);
+}
+button.primary:hover:not(:disabled),
+.actions .download-button:hover {
+  background: var(--figma-color-bg-brand-hover, #105dd8);
+}
+#create-frame {
+  color: var(--figma-color-text-brand, #1769ef);
+}
+.actions .save-pdf {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.save-pdf svg {
+  flex-shrink: 0;
+}
+.actions .download-button {
+  border: 1px solid var(--accent);
+  border-radius: 7px;
+  text-decoration: none;
+}
+.notification-card {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  margin-bottom: 12px;
+  background: var(--figma-color-bg, #fff);
+  color: inherit;
+  overflow: hidden;
+}
+.notification-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+}
+.notification-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.notification-card.success .notification-icon {
+  color: var(--figma-color-text-success, #16846d);
+}
+.notification-card.warning .notification-icon {
+  color: var(--figma-color-text-warning, #946100);
+}
+.notification-card.error .notification-icon {
+  color: var(--figma-color-text-danger, #a33228);
+}
+.notification-card.progress .notification-icon {
+  border: 0;
+}
+.notification-copy {
+  flex: 1;
+  min-width: 0;
+}
+#status {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.notification-file {
+  font-size: 11px;
+  margin-top: 2px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notification-details {
+  border-top: 1px solid var(--border);
+}
+.notification-details summary {
+  padding: 6px 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+  font-size: 12px;
+  color: var(--figma-color-text-warning, #865400);
+  background: var(--figma-color-bg-warning, #fff7e8);
+}
+.notification-details summary::-webkit-details-marker {
+  display: none;
+}
+.notification-details[open] .disclosure-chevron {
+  transform: rotate(180deg);
+}
+#diagnostics {
+  padding: 0 11px 0 26px;
+  margin: 8px 0;
+  font-size: 11px;
+  line-height: 1.45;
+  max-height: 110px;
+  overflow-y: auto;
+}
+#diagnostics li {
+  padding: 3px 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+#cancel {
+  flex-shrink: 0;
+  padding: 4px;
+}
+@media (max-width: 380px) {
+  .content {
+    padding: 16px;
+  }
+  .export-footer {
+    padding: 12px 16px;
+  }
+  .tabs {
+    padding: 0;
+  }
+}
