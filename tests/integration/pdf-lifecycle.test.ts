@@ -1,3 +1,5 @@
+import { createI18n, formatMessage } from "../../src/ui/i18n";
+const i18n = createI18n("ja");
 import test from "node:test";
 import assert from "node:assert/strict";
 import { setup, settle } from "../helpers/figma";
@@ -17,7 +19,9 @@ test("render failure cleans all temporary nodes", async () => {
   await settle();
   assert(
     s.messages.some(
-      (m) => m.type === "error" && m.message.includes("render failure"),
+      (m) =>
+        m.type === "error" &&
+        formatMessage(m.message, i18n).includes("render failure"),
     ),
   );
   assert(s.created.every((n) => n.removed));
@@ -94,7 +98,10 @@ test("cancelling an outline export never emits a bundle and cleans up", async ()
   await settle();
   assert(!s.messages.some((m) => m.type === "bundle"));
   assert(
-    s.messages.some((m) => m.type === "error" && /キャンセル/.test(m.message)),
+    s.messages.some(
+      (m) =>
+        m.type === "error" && /キャンセル/.test(formatMessage(m.message, i18n)),
+    ),
   );
   assert(s.created.every((n) => n.removed));
 });
@@ -110,7 +117,9 @@ test("stale selection revision is rejected before any temporary clone", async ()
   await settle();
   assert(
     s.messages.some(
-      (m) => m.type === "error" && /選択が変わりました/.test(m.message),
+      (m) =>
+        m.type === "error" &&
+        /選択が変わりました/.test(formatMessage(m.message, i18n)),
     ),
   );
   assert.equal(s.created.length, 0);

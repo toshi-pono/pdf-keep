@@ -84,7 +84,10 @@ test("size guards reject invalid scales and excessive memory", () => {
 test("frame image limit accepts lower scales and rejects dimensions over 4096", () => {
   for (const s of [0.25, 0.5, 1, 2, 3, 4]) {
     validateSize(4096 / s, 100, s, "frame");
-    assert.throws(() => validateSize(4097 / s, 100, s, "frame"), /4096/);
+    assert.throws(
+      () => validateSize(4097 / s, 100, s, "frame"),
+      /errors.frameBackgroundLimit/,
+    );
   }
   validateSize(6000, 1000, 1, "pdf");
   validateSize(6000, 1000, 0.5, "frame");

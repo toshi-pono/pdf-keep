@@ -1,3 +1,5 @@
+import { type Message, msg } from "../shared/messages";
+import { AppError } from "../shared/errors";
 import { operationBudget } from "../shared/operation-budget";
 import { measure } from "../shared/performance";
 
@@ -49,7 +51,7 @@ export class TemporaryExport {
   private closed = false;
   constructor(private verify: () => void) {}
   check = () => {
-    if (this.closed) throw Error("キャンセルしました。");
+    if (this.closed) throw new AppError(msg("operation.cancelled"));
     this.verify();
   };
   private mark(node: SceneNode) {
@@ -145,7 +147,7 @@ export class TemporaryExport {
     this.nodes.clear();
   }
   async run<T>(
-    label: string,
+    label: Message,
     work: (check: () => void) => Promise<T>,
     ms = 30000,
     check = this.check,
@@ -157,7 +159,7 @@ export class TemporaryExport {
       },
       ms,
       undefined,
-      (stage) => `${stage}が制限時間を超えました。`,
+      (stage) => msg("errors.stageTimeout", { stage }),
     );
     return budget.run(label, () => work(() => budget.check(label)));
   }
@@ -178,10 +180,10 @@ export class TemporaryExport {
   ): Promise<string | Uint8Array> {
     const label =
       options.format === "PNG"
-        ? "背景PNGの取得"
+        ? msg("progress.backgroundPng")
         : options.format === "PDF"
-          ? "PDFの取得"
-          : "SVGの取得";
+          ? msg("progress.pdf")
+          : msg("progress.svg");
     return this.run<string | Uint8Array>(
       label,
       () =>

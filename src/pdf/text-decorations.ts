@@ -1,3 +1,5 @@
+import { AppError } from "../shared/errors";
+import { msg } from "../shared/messages";
 import type { RegisteredFont } from "./create-pdf";
 
 interface DecoratedRun {
@@ -15,7 +17,7 @@ export function appendTextDecorations(
   runs: DecoratedRun[],
 ) {
   const rootMatrix = svg.getCTM();
-  if (!rootMatrix) throw Error("文字の配置を取得できません。");
+  if (!rootMatrix) throw new AppError(msg("errors.textPositions"));
   const paths: SVGPathElement[] = [];
   for (const { el, font, include } of runs) {
     const decorations = new Map<string, SVGElement>();
@@ -38,11 +40,13 @@ export function appendTextDecorations(
     const matrix = rootMatrix.inverse().multiply(el.getCTM()!);
     for (const [line, owner] of decorations) {
       if (!["underline", "line-through", "overline"].includes(line))
-        throw Error(`未対応の文字装飾: ${line}`);
+        throw new AppError(msg("errors.textDecoration", { decoration: line }));
       const decoration = getComputedStyle(owner);
       if (decoration.textDecorationStyle !== "solid")
-        throw Error(
-          `未対応の装飾線スタイル: ${decoration.textDecorationStyle}`,
+        throw new AppError(
+          msg("errors.decorationStyle", {
+            style: decoration.textDecorationStyle,
+          }),
         );
       const size = parseFloat(decoration.fontSize);
       const factor = size / font.parsed.unitsPerEm;
@@ -65,7 +69,7 @@ export function appendTextDecorations(
             ? -font.parsed.ascender * factor
             : Math.max(1, Math.ceil(thickness / 2));
       if (![thickness, offset].every(Number.isFinite) || thickness < 0)
-        throw Error("文字装飾の寸法が不正です。");
+        throw new AppError(msg("errors.decorationDimensions"));
       if (!thickness) continue;
       const spans: { x: number; end: number; y: number }[] = [];
       for (let i = 0; i < el.getNumberOfChars(); i++) {
@@ -73,7 +77,7 @@ export function appendTextDecorations(
         const start = el.getStartPositionOfChar(i);
         const end = el.getEndPositionOfChar(i);
         if (Math.abs(start.y - end.y) > 0.01 || el.getRotationOfChar(i))
-          throw Error("個別に回転した文字の装飾は未対応です。");
+          throw new AppError(msg("errors.rotatedDecoration"));
         const x = Math.min(start.x, end.x),
           right = Math.max(start.x, end.x);
         const last = spans.at(-1);

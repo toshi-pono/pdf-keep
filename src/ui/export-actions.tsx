@@ -1,3 +1,4 @@
+import { msg } from "../shared/messages";
 import { NotificationCard } from "./notification-card";
 import type { PluginUI } from "./use-plugin-ui";
 
@@ -31,7 +32,7 @@ export function ExportActions({ ui }: { ui: PluginUI }) {
           disabled={ui.frameDisabled}
           onClick={() => ui.start("frame")}
         >
-          {t("Frame に変換")}
+          {t(msg("actions.convertFrame"))}
         </button>
         <button
           id="export"
@@ -41,7 +42,7 @@ export function ExportActions({ ui }: { ui: PluginUI }) {
           onClick={() => ui.start("pdf")}
         >
           <DownloadIcon />
-          {t("PDF を保存")}
+          {t(msg("actions.savePdf"))}
         </button>
         <a
           id="download"
@@ -51,7 +52,7 @@ export function ExportActions({ ui }: { ui: PluginUI }) {
           hidden={!state.download}
         >
           <DownloadIcon />
-          {t("PDF を保存")}
+          {t(msg("actions.savePdf"))}
         </a>
       </div>
     </footer>

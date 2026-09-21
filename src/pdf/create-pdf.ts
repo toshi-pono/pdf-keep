@@ -1,3 +1,5 @@
+import { joinMessages, type Message, msg } from "../shared/messages";
+import { AppError, errorMessage } from "../shared/errors";
 import { jsPDF } from "jspdf";
 import { PDFDocument } from "pdf-lib";
 import { createFontSubsetter } from "../fonts/font-subset";
@@ -13,7 +15,6 @@ import {
   type TextRangeResult,
 } from "../shared/protocol";
 import { validateSize, rasterDimensions } from "../shared/resolution";
-import { errorMessage } from "../shared/errors";
 import { appendTextDecorations } from "./text-decorations";
 import { fontIdentities, normalizeFontName } from "../fonts/font-names";
 export interface RegisteredFont {
@@ -24,22 +25,17 @@ export interface RegisteredFont {
 export const registry = new Map<string, RegisteredFont>();
 function readStaticFont(bytes: Uint8Array) {
   if (bytes.length > 32_000_000)
-    throw new Error("フォントは 32 MB 以下にしてください。");
+    throw new AppError(msg("errors.fontSizeLimit"));
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (bytes.length < 12 || view.getUint32(0) !== 0x00010000)
-    throw new Error(
-      "静的 TrueType (.ttf) を指定してください。OTF / TTC は未対応です。",
-    );
+    throw new AppError(msg("errors.staticTtf"));
   const tables = view.getUint16(4);
   if (12 + tables * 16 > bytes.length)
-    throw new Error("フォントファイルが壊れています。");
+    throw new AppError(msg("errors.corruptFont"));
   for (let i = 0; i < tables; i++) {
     const off = 12 + i * 16;
     const tag = String.fromCharCode(...bytes.slice(off, off + 4));
-    if (tag === "fvar")
-      throw new Error(
-        "可変フォントは未対応です。静的 TTF を指定してください。",
-      );
+    if (tag === "fvar") throw new AppError(msg("errors.variableFont"));
   }
   const copy = bytes.slice();
   const parsed = opentype.parse(copy.buffer);
@@ -66,19 +62,23 @@ export function registerFont(key: string, bytes: Uint8Array) {
         normalizeFontName(name.style) === normalizeFontName(style),
     )
   )
-    throw new Error(
-      `フォントの名前が一致しません。必要: ${family} ${style} / ファイル: ${identities[0]?.family ?? "?"} ${identities[0]?.style ?? "?"}`,
+    throw new AppError(
+      msg("errors.fontNameMismatch", {
+        family,
+        style,
+        fileFamily: identities[0]?.family ?? "?",
+        fileStyle: identities[0]?.style ?? "?",
+      }),
     );
   storeFont([key], font);
 }
 /** Import once by font metadata; later frame selections use the same registry automatically. */
 export function registerAutomatic(bytes: Uint8Array): string[] {
   if (bytes.length > 32_000_000 || bytes.length < 12)
-    throw new Error("フォントのサイズが不正です。");
+    throw new AppError(msg("errors.invalidFontSize"));
   const font = readStaticFont(bytes);
   const keys = new Set(fontIdentities(font.parsed).map(fontKey));
-  if (!keys.size)
-    throw new Error("フォントのファミリー・スタイル名を読み取れません。");
+  if (!keys.size) throw new AppError(msg("errors.fontNames"));
   storeFont(keys, font);
   return [...keys];
 }
@@ -196,13 +196,19 @@ function chooseFont(el: SVGElement, fonts: FontSpec[]) {
   );
   const keys = new Set(matches.map(fontKey));
   if (keys.size !== 1)
-    throw new Error(
-      `SVG のフォントを対応付けできません: ${family} / ${w} / ${style.fontStyle}`,
+    throw new AppError(
+      msg("errors.svgFontMatch", {
+        family,
+        weight: w,
+        style: style.fontStyle,
+      }),
     );
   const f = matches[0];
   const registered = registry.get(fontKey(f));
   if (!registered)
-    throw new Error(`フォントを登録してください: ${f.family} ${f.style}`);
+    throw new AppError(
+      msg("errors.registerNamedFont", { family: f.family, style: f.style }),
+    );
   return registered;
 }
 /** Rebuild an allow-listed text-only SVG. Never forward Figma's image/defs tree to PDF. */
@@ -212,7 +218,7 @@ export function textSVG(asset: TextAsset, rich = false): SVGSVGElement {
     doc.querySelector("parsererror") ||
     doc.documentElement.localName !== "svg"
   )
-    throw new Error("文字 SVG を解析できません。");
+    throw new AppError(msg("errors.parseTextSvg"));
   const root = doc.documentElement;
   const vb = (
     root.getAttribute("viewBox") ?? `0 0 ${asset.width} ${asset.height}`
@@ -221,7 +227,7 @@ export function textSVG(asset: TextAsset, rich = false): SVGSVGElement {
     .split(/[\s,]+/)
     .map(Number);
   if (vb.length !== 4 || !vb.every(Number.isFinite) || vb[2] <= 0 || vb[3] <= 0)
-    throw new Error("SVG の寸法が不正です。");
+    throw new AppError(msg("errors.svgDimensions"));
   const out = document.createElementNS(ns, "svg");
   out.setAttribute("width", String(asset.width));
   out.setAttribute("height", String(asset.height));
@@ -236,9 +242,9 @@ export function textSVG(asset: TextAsset, rich = false): SVGSVGElement {
       asset.outlined &&
       ["text", "tspan", "textPath"].includes(node.localName)
     )
-      throw new Error("文字のアウトライン化に失敗しました。");
+      throw new AppError(msg("errors.outlineConversion"));
     if (!["svg", "g", "text", "tspan"].includes(node.localName) && !vector)
-      throw new Error(`文字 SVG に非対応の要素があります: ${node.localName}`);
+      throw new AppError(msg("errors.svgElement", { element: node.localName }));
     const target =
       node.localName === "svg"
         ? parent
@@ -250,7 +256,7 @@ export function textSVG(asset: TextAsset, rich = false): SVGSVGElement {
       if (node === root && attr.name === "overflow") continue;
       if (vector && vectorAttrs.has(attr.name)) {
         if (/url\s*\(/i.test(attr.value))
-          throw new Error("SVG 参照は許可されません。");
+          throw new AppError(msg("errors.svgReference"));
         target.setAttribute(attr.name, attr.value);
         continue;
       }
@@ -282,10 +288,10 @@ export function textSVG(asset: TextAsset, rich = false): SVGSVGElement {
               ].includes(prop)
             )
           )
-            throw new Error(`未対応の文字スタイル: ${prop}`);
+            throw new AppError(msg("errors.textStyle", { style: prop }));
           const value = scratch.style.getPropertyValue(prop);
           if (/url\s*\(/i.test(value))
-            throw new Error("SVG 外部参照は許可されません。");
+            throw new AppError(msg("errors.externalSvgReference"));
           (target as SVGElement).style.setProperty(prop, value);
         }
       } else if (
@@ -298,9 +304,12 @@ export function textSVG(asset: TextAsset, rich = false): SVGSVGElement {
           ].includes(attr.name))
       ) {
         if (/url\s*\(/i.test(attr.value))
-          throw new Error("SVG 参照は許可されません。");
+          throw new AppError(msg("errors.svgReference"));
         target.setAttribute(attr.name, attr.value);
-      } else throw new Error(`未対応の文字 SVG 属性: ${attr.name}`);
+      } else
+        throw new AppError(
+          msg("errors.svgAttribute", { attribute: attr.name }),
+        );
     }
     for (const child of node.childNodes) {
       if (child.nodeType === Node.ELEMENT_NODE) copy(child as Element, target);
@@ -317,7 +326,7 @@ export function textSVG(asset: TextAsset, rich = false): SVGSVGElement {
     !out.querySelector("text") &&
     asset.fonts.some((f) => f.characters.trim())
   )
-    throw new Error("文字が SVG のテキストとして出力されませんでした。");
+    throw new AppError(msg("errors.svgTextMissing"));
   // svg2pdf replaces nested opacity rather than multiplying it. Resolve the
   // text-node alpha and SVG group alpha into each painted run explicitly.
   const alpha = (value: string) => {
@@ -325,7 +334,7 @@ export function textSVG(asset: TextAsset, rich = false): SVGSVGElement {
       ? Number(value.slice(0, -1)) / 100
       : Number(value);
     if (!Number.isFinite(number) || number < 0 || number > 1)
-      throw new Error("文字の不透明度が不正です。");
+      throw new AppError(msg("errors.textOpacity"));
     return number;
   };
   function opacity(node: SVGElement, ancestor: number, inheritedFill: number) {
@@ -369,7 +378,7 @@ export function positionedTextSVG(
     ![a, b, c, d, asset.x, asset.y].every(Number.isFinite) ||
     Math.abs(a * d - b * c) < 1e-12
   )
-    throw new Error("文字の変換行列が不正です。");
+    throw new AppError(msg("errors.textTransform"));
   const page = document.createElementNS(ns, "svg");
   page.setAttribute("width", String(width));
   page.setAttribute("height", String(height));
@@ -387,9 +396,11 @@ function validateGlyphs(font: RegisteredFont, text: string) {
   for (const c of text) {
     if (/[\n\r\t]/.test(c)) continue;
     if (c.codePointAt(0)! > 0xffff)
-      throw new Error(`初版では補助平面の文字に対応していません: ${c}`);
+      throw new AppError(
+        msg("errors.supplementaryCharacter", { character: c }),
+      );
     if (!font.parsed.charToGlyphIndex(c))
-      throw new Error(`登録フォントに文字「${c}」がありません。`);
+      throw new AppError(msg("errors.missingCharacter", { character: c }));
   }
 }
 function binary(bytes: Uint8Array) {
@@ -410,8 +421,13 @@ export async function opaquePNG(
     img.src = url;
     await img.decode();
     if (img.width !== width || img.height !== height)
-      throw new Error(
-        `PNG 寸法が一致しません (${img.width}×${img.height} / ${width}×${height})。`,
+      throw new AppError(
+        msg("errors.pngDimensions", {
+          actualWidth: img.width,
+          actualHeight: img.height,
+          width,
+          height,
+        }),
       );
     const canvas = document.createElement("canvas");
     canvas.width = width;
@@ -428,8 +444,8 @@ export async function opaquePNG(
   }
 }
 export interface PDFCallbacks {
-  progress?: (message: string) => void;
-  warning?: (message: string) => void;
+  progress?: (message: Message) => void;
+  warning?: (message: Message) => void;
   outlined?: () => void;
   resolveRange?: (range: TextRangeRequest) => Promise<TextRangeResult>;
   textSummary?: (summary: { copied: number; outlined: number }) => void;
@@ -454,7 +470,9 @@ export async function createPDF(
     check(); // Cancellation must never start a second export.
     if (bundle.mode !== "text" || !bundle.outlinePDF) {
       if (bundle.outlineError)
-        throw new Error(errorMessage(error) + "\n" + bundle.outlineError);
+        throw new AppError(
+          joinMessages([errorMessage(error), bundle.outlineError]),
+        );
       throw error;
     }
     callbacks.warning?.(errorMessage(error));
@@ -501,13 +519,13 @@ async function renderPDF(
   check();
   if (bundle.mode === "outline") {
     if (!bundle.outlinePDF?.length)
-      throw new Error("文字のアウトラインを取得できませんでした。");
-    callbacks.progress?.("アウトラインを埋め込み、PDF を生成中…");
+      throw new AppError(msg("errors.outlineUnavailable"));
+    callbacks.progress?.(msg("progress.embeddingOutlines"));
     const result = await PDFDocument.load(pdf.output("arraybuffer"));
     check();
     const layer = await PDFDocument.load(bundle.outlinePDF);
     if (layer.getPageCount() !== 1)
-      throw new Error("アウトライン PDF のページ数が不正です。");
+      throw new AppError(msg("errors.outlinePageCount"));
     const [outlines] = await result.embedPages([layer.getPage(0)]);
     result.getPage(0).drawPage(outlines, { x: 0, y: 0, width, height });
     check();
@@ -531,7 +549,7 @@ async function renderPDF(
         check();
         if (asset.outlined)
           callbacks.warning?.(
-            `「${asset.name}」はベクターで保持しました。このレイヤーの文字は検索・コピーできません。`,
+            msg("outlines.vectorLayer", { name: asset.name }),
           );
         const svg = positionedTextSVG(asset, bundle.width, bundle.height);
         const host = document.createElement("div");
@@ -568,7 +586,11 @@ async function renderPDF(
           .join(" / ");
         index++;
         callbacks.progress?.(
-          `フォントを軽量化中 ${index}/${usage.size}: ${label}`,
+          msg("progress.subsettingFont", {
+            current: index,
+            total: usage.size,
+            family: label,
+          }),
         );
         let bytes = font.bytes;
         const alias = font.alias;
@@ -580,14 +602,16 @@ async function renderPDF(
           check();
           const parsed = opentype.parse(compact.slice().buffer);
           if (parsed.unitsPerEm !== font.parsed.unitsPerEm)
-            throw Error("フォントの単位が変わりました。");
+            throw new AppError(msg("errors.fontUnitsChanged"));
           for (const c of characters) {
             if (
               !parsed.charToGlyphIndex(c) ||
               parsed.charToGlyph(c).advanceWidth !==
                 font.parsed.charToGlyph(c).advanceWidth
             )
-              throw Error(`文字「${c}」の幅を保持できませんでした。`);
+              throw new AppError(
+                msg("errors.characterWidth", { character: c }),
+              );
           }
           // A PDF subset tag identifies the fully compacted font, not just sparse outlines.
           subsetNames.set(
@@ -603,13 +627,16 @@ async function renderPDF(
         } catch (e) {
           check(); // Cancellation never becomes a successful fallback.
           callbacks.warning?.(
-            `${label}: 軽量化できなかったため従来方式で埋め込みました（${e instanceof Error ? e.message : String(e)}）。`,
+            msg("fonts.fallbackEmbedding", {
+              family: label,
+              reason: errorMessage(e),
+            }),
           );
         }
         pdf.addFileToVFS(alias + ".ttf", binary(bytes));
         pdf.addFont(alias + ".ttf", alias, "normal");
         if (!pdf.getFontList()[alias])
-          throw Error("PDF フォントの登録に失敗しました。");
+          throw new AppError(msg("errors.pdfFontRegistration"));
         // Browser measurements keep original shaping tables and metrics.
         const face = new FontFace(alias, font.bytes.slice().buffer);
         await face.load();
@@ -617,7 +644,7 @@ async function renderPDF(
         loadedFaces.push(face);
       }
       subsetter.dispose();
-      callbacks.progress?.("文字を配置し、PDF を生成中…");
+      callbacks.progress?.(msg("progress.placingText"));
       for (const { svg, resolved } of prepared) {
         for (const { el, font } of resolved) {
           const alias = font.alias;

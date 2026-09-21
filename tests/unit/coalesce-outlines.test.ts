@@ -49,3 +49,21 @@ test("gaps, reverse order, full layers and composition remain separate", () => {
 test("grapheme ranges merge at their actual UTF-16 boundaries", () => {
   assert.equal(coalesceOutlines([part(1, 3), part(3, 5)])[0].range.end, 5);
 });
+
+test("equivalent structured reasons coalesce after cloning, different parameters do not", () => {
+  const reason = {
+    kind: "message" as const,
+    key: "errors.missingCharacter" as const,
+    params: { character: "가" },
+  };
+  const a = { ...part(1, 2), reason };
+  const b = { ...part(2, 3), reason: structuredClone(reason) };
+  assert.equal(coalesceOutlines([a, b]).length, 1);
+  assert.equal(
+    coalesceOutlines([
+      a,
+      { ...b, reason: { ...reason, params: { character: "나" } } },
+    ]).length,
+    2,
+  );
+});

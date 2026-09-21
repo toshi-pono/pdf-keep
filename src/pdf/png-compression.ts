@@ -1,3 +1,5 @@
+import { AppError } from "../shared/errors";
+import { msg } from "../shared/messages";
 import {
   PDFDocument,
   PDFName,
@@ -20,7 +22,7 @@ export async function pngPredictorRows(
     height < 1 ||
     rgb.length !== width * height * 3
   )
-    throw Error("PNG 圧縮用の画素データが不正です。");
+    throw new AppError(msg("errors.pngPixels"));
   const stride = width * 3;
   const output = new Uint8Array(rgb.length + height);
   const rows = Array.from({ length: 5 }, () => new Uint8Array(stride));

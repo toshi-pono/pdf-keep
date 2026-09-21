@@ -1,3 +1,5 @@
+import { joinMessages, type Message, msg } from "../shared/messages";
+import { AppError, errorMessage } from "../shared/errors";
 import { coalesceOutlines } from "./coalesce-outlines";
 import { measure } from "../shared/performance";
 import { PDFDocument, PDFName, type PDFEmbeddedPage } from "pdf-lib";
@@ -9,7 +11,6 @@ import {
   type TextRangeRequest,
   type TextRangeResult,
 } from "../shared/protocol";
-import { errorMessage } from "../shared/errors";
 import { rasterDimensions } from "../shared/resolution";
 import { CIDFont, unicodeHex } from "./cid-font";
 import { embedNativeTextFont, nativeTextGlyph } from "./native-text-font";
@@ -56,7 +57,7 @@ interface NativePart {
   asset: TextAsset;
   range: TextRangeRequest;
   clip?: Rect;
-  reason: string;
+  reason: Message;
   order: number;
   proofRun?: TextRun;
   /** Preserve a Figma fallback run as a Unicode-mapped PDF font. */
@@ -64,7 +65,7 @@ interface NativePart {
 }
 type Part = GlyphPart | NativePart;
 const fmt = (n: number) => {
-  if (!Number.isFinite(n)) throw Error("文字の配置が不正です。");
+  if (!Number.isFinite(n)) throw new AppError(msg("errors.textPosition"));
   return String(Math.round(n * 1e6) / 1e6);
 };
 const matrixFor = (asset: TextAsset) =>
@@ -110,7 +111,7 @@ function sourceRange(
       ? c.start < run.start! + to && c.end > run.start! + from
       : c.displayStart < to && c.displayEnd > from,
   );
-  if (!chars.length) throw Error("字形の元文字列を対応付けできません。");
+  if (!chars.length) throw new AppError(msg("errors.glyphSource"));
   return {
     start: chars[0].start,
     end: chars[chars.length - 1].end,
@@ -177,14 +178,14 @@ export async function renderSearchablePDF(
     outlined = 0;
   const decorations = new Map<TextAsset, string>();
   const available = new Map(dep.registry);
-  const warn = (message: string) => callbacks.warning?.(message);
+  const warn = (message: Message) => callbacks.warning?.(message);
   const request = (range: TextRangeRequest) => {
     check();
     const key = JSON.stringify(range);
     let pending = ranges.get(key);
     if (!pending) {
       if (!callbacks.resolveRange)
-        throw Error("文字範囲のアウトラインを取得できません。");
+        throw new AppError(msg("errors.rangeProvider"));
       pending = callbacks.resolveRange(range).then((result) => {
         check();
         return result;
@@ -199,7 +200,7 @@ export async function renderSearchablePDF(
     const cached = parsedSVGs.get(key);
     if (cached) return cached;
     const result = await request(range);
-    if (!result.svg) throw Error("文字のアウトラインを取得できませんでした。");
+    if (!result.svg) throw new AppError(msg("errors.outlineUnavailable"));
     const svg = dep.svg({
       ...asset,
       svg: result.svg,
@@ -213,14 +214,20 @@ export async function renderSearchablePDF(
   const fallback = (
     asset: TextAsset,
     range: TextRangeRequest,
-    reason: string,
+    reason: Message,
     order: number,
     clip?: Rect,
     proofRun?: TextRun,
   ): NativePart => {
     if (!bundle.outlineFallback)
-      throw Error(
-        `${asset.name}${range.start === undefined ? "" : ` (${range.start}–${range.end})`}: ${reason}`,
+      throw new AppError(
+        joinMessages(
+          [
+            `${asset.name}${range.start === undefined ? "" : ` (${range.start}–${range.end})`}: `,
+            reason,
+          ],
+          "",
+        ),
       );
     return { type: "native", asset, range, reason, order, clip, proofRun };
   };
@@ -297,7 +304,7 @@ export async function renderSearchablePDF(
           text: run.original,
           proofRun: run,
           order: run.start,
-          reason: "Figma の代替フォントを文字として埋め込めませんでした。",
+          reason: msg("errors.figmaFallbackFont"),
         });
         continue;
       }
@@ -306,7 +313,7 @@ export async function renderSearchablePDF(
           fallback(
             asset,
             nativeRequest(asset, run.start, run.end),
-            "フォントを登録してください。",
+            msg("errors.registerFont"),
             run.start ?? -1,
           ),
         );
@@ -390,7 +397,7 @@ export async function renderSearchablePDF(
             fallback(
               asset,
               nativeRequest(asset, original.start, original.end),
-              `登録フォントに文字「${original.text}」がありません。`,
+              msg("errors.missingCharacter", { character: original.text }),
               order,
             ),
           );
@@ -475,7 +482,7 @@ export async function renderSearchablePDF(
               fallback(
                 asset,
                 nativeRequest(asset, original.start, original.end),
-                "OpenType の字形・位置を登録フォントで再現できません。",
+                msg("errors.openTypeReproduction"),
                 order,
                 undefined,
                 run,
@@ -517,7 +524,7 @@ export async function renderSearchablePDF(
         const first = runs.find(
           (r) => r.start !== undefined && r.start <= start && r.end! > start,
         );
-        if (!first) throw Error("空のリスト段落の位置を取得できません。");
+        if (!first) throw new AppError(msg("errors.emptyListPosition"));
         if (
           !parts.some(
             (p) =>
@@ -537,8 +544,7 @@ export async function renderSearchablePDF(
             width: first.x - 0.5,
             height: Math.min(first.y + first.size * 0.2, asset.height) - top,
           };
-          if (box.width <= 0)
-            throw Error("リスト記号を本文から分離できません。");
+          if (box.width <= 0) throw new AppError(msg("errors.listSeparation"));
           let matches: (GlyphMatch | undefined)[] = [];
           try {
             if (first.font) {
@@ -587,7 +593,7 @@ export async function renderSearchablePDF(
               fallback(
                 asset,
                 nativeRequest(asset),
-                "リスト記号・番号を登録フォントと照合できません。",
+                msg("errors.listMarkerMatch"),
                 start - 0.5,
                 box,
               ),
@@ -671,8 +677,8 @@ export async function renderSearchablePDF(
     }
     for (const asset of bundle.texts) {
       check();
-      callbacks.progress?.(`文字を取得中: ${asset.name}`);
-      if (!asset.source) throw Error("文字の範囲情報がありません。");
+      callbacks.progress?.(msg("progress.readingText", { name: asset.name }));
+      if (!asset.source) throw new AppError(msg("errors.rangeMissing"));
       const simple =
         !/font-feature-settings|baseline-shift|font-variant-position/.test(
           asset.svg,
@@ -797,7 +803,10 @@ export async function renderSearchablePDF(
             } catch (error) {
               check();
               if (!bundle.outlineFallback) throw error;
-              part.reason += ` ${errorMessage(error)}`;
+              part.reason = joinMessages(
+                [part.reason, errorMessage(error)],
+                " ",
+              );
             }
           }
           const key = JSON.stringify(part.range);
@@ -805,12 +814,12 @@ export async function renderSearchablePDF(
           if (!native) {
             const result = await request(part.range);
             if (!result.pdf)
-              throw Error("文字のアウトラインを取得できませんでした。");
+              throw new AppError(msg("errors.outlineUnavailable"));
             const layer = await measure("pdf-load", () =>
               PDFDocument.load(result.pdf!),
             );
             if (layer.getPageCount() !== 1)
-              throw Error("アウトライン PDF のページ数が不正です。");
+              throw new AppError(msg("errors.outlinePageCount"));
             const [embedded] = await measure("pdf-embed", () =>
               doc.embedPages([layer.getPage(0)]),
             );
@@ -846,13 +855,16 @@ export async function renderSearchablePDF(
           }
           commands.push(`${name} Do`, "Q");
           outlined++;
-          const scope = part.clip
-            ? "リスト記号"
-            : part.range.start === undefined
-              ? "レイヤー全体"
-              : `${part.range.start}–${part.range.end}`;
+          const details = { name: asset.name, reason: part.reason };
           warn(
-            `「${asset.name}」の${scope}をアウトラインで保持しました: ${part.reason}`,
+            part.clip
+              ? msg("outlines.list", details)
+              : part.range.start === undefined
+                ? msg("outlines.layer", details)
+                : msg("outlines.range", {
+                    ...details,
+                    scope: `${part.range.start}–${part.range.end}`,
+                  }),
           );
           continue;
         }
@@ -922,7 +934,7 @@ export async function renderSearchablePDF(
     shaper.dispose();
     for (const { font } of fonts.values()) {
       check();
-      callbacks.progress?.("フォントを軽量化中…");
+      callbacks.progress?.(msg("progress.subsetting"));
       await font.embed(subsetter, check, warn);
     }
     check();

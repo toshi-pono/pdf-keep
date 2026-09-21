@@ -48,7 +48,7 @@ test("one Save PDF click downloads inside a sandboxed iframe; retries, warnings 
         name: "Title",
         nodeId: "1",
         severity: "warning",
-        reason: "文字の輪郭線は未対応です。",
+        reason: { kind: "message", key: "errors.textStroke", params: {} },
       },
     ],
   });
@@ -66,7 +66,14 @@ test("one Save PDF click downloads inside a sandboxed iframe; retries, warnings 
     );
   });
   const request = async () => {
+    const count = await page.evaluate(
+      () => window.sent.filter((m) => m.type === "export").length,
+    );
     await frame.locator("#export").click();
+    await page.waitForFunction(
+      (count) => window.sent.filter((m) => m.type === "export").length > count,
+      count,
+    );
     return await page.evaluate(
       () =>
         window.sent.filter((message) => message.type === "export").at(-1).id,

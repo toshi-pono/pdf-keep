@@ -1,3 +1,5 @@
+import { type KeyMessage, msg } from "../shared/messages";
+import { AppError } from "../shared/errors";
 import { measure } from "../shared/performance";
 import wasm from "harfbuzzjs/dist/harfbuzz.wasm";
 export interface ShapedGlyph {
@@ -29,7 +31,11 @@ function shapeWorker() {
     try {
       if (!hb) {
         const fail = () => {
-          throw Error("文字組み用 WASM を実行できません。");
+          throw {
+            kind: "message",
+            key: "errors.shapingModule",
+            params: {},
+          } satisfies KeyMessage;
         };
         const module = await WebAssembly.instantiate(data.wasm, {
           wasi_snapshot_preview1: { proc_exit: fail },
@@ -115,7 +121,14 @@ function shapeWorker() {
         unitsPerEm: hb.hb_face_get_upem(cached.face),
       });
     } catch (e) {
-      scope.postMessage({ error: e instanceof Error ? e.message : String(e) });
+      scope.postMessage({
+        error:
+          e && typeof e === "object" && "kind" in e
+            ? e
+            : e instanceof Error
+              ? e.message
+              : String(e),
+      });
     } finally {
       if (hb) {
         if (features) hb.free(features);
@@ -189,7 +202,7 @@ export function createTextShaper(check = () => {}, timeoutMs = 15000) {
               try {
                 check();
                 if (Date.now() > deadline)
-                  throw Error("文字組みが制限時間内に完了しませんでした。");
+                  throw new AppError(msg("errors.shapingTimeout"));
               } catch (e) {
                 finish(e);
                 return;
@@ -199,9 +212,9 @@ export function createTextShaper(check = () => {}, timeoutMs = 15000) {
             active.onmessage = ({ data }) => {
               try {
                 check();
-                if (data.error) throw Error(data.error);
+                if (data.error) throw new AppError(data.error);
                 if (!Array.isArray(data.glyphs) || !data.unitsPerEm)
-                  throw Error("文字組みの応答が不正です。");
+                  throw new AppError(msg("errors.shapingResponse"));
                 finish(undefined, data);
               } catch (e) {
                 finish(e);
@@ -209,10 +222,10 @@ export function createTextShaper(check = () => {}, timeoutMs = 15000) {
             };
             active.onerror = (e) => {
               e.preventDefault();
-              finish(Error(e.message));
+              finish(new AppError(e.message));
             };
             active.onmessageerror = () =>
-              finish(Error("文字組みの応答が不正です。"));
+              finish(new AppError(msg("errors.shapingResponse")));
             poll();
             if (!finished) {
               active.postMessage({

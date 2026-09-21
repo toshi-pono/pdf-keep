@@ -161,7 +161,11 @@ try {
       "each character is still verified",
     );
     assert.equal(result.warnings.length, result.count);
-    assert(result.warnings.every((w) => w.includes("4–7")));
+    assert(
+      result.warnings.every(
+        (w) => w.key === "outlines.range" && w.params.scope === "4–7",
+      ),
+    );
     assert.equal(result.metrics["pdf-load"], result.count);
     assert.equal(result.metrics["pdf-embed"], result.count);
     const name = `tmp/qa/grouped-script-${result.count}`;

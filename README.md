@@ -32,8 +32,14 @@ In Figma Desktop, choose **Plugins → Development → Import plugin from manife
 
 Use `npm run format` to format code, `npm run check` for the full validation suite, and `npm run package` to create a distribution ZIP. See the [development guide](docs/development.md) for browser-test dependencies, project structure, and CI.
 
+## Languages
+
+The UI supports Japanese, English, and Korean. Change **Settings → Language** to save a preference on this device. Startup uses the saved choice, then the browser language, then English. Regional codes such as `ko-KR` use their base language. A failed read uses the browser language; a failed save keeps the current choice active and shows a notice. Language changes also update existing progress, warnings, and errors without restarting an export.
+
+Translations are bundled with i18next/react-i18next; no translation server is needed. To add a language, register its code and native label in `src/i18n/languages.ts`, add a typed resource in `src/i18n/locales/`, and register it in `src/ui/i18n.ts`. Add new messages under stable semantic keys in each resource, with named `{{parameters}}` and `_one`/`_other` forms for counts. Use the typed `msg(key, params)` helper; keep messages structured through errors, callbacks, and worker/plugin communication, and render them only in the UI. External text and document names remain opaque strings. Run `npm run check` to validate resource completeness, parameters, persistence, and switching behavior.
+
 ## Acknowledgement
 
-PDF Keep builds on [React](https://github.com/facebook/react), [jsPDF](https://github.com/parallax/jsPDF), [pdf-lib](https://github.com/Hopding/pdf-lib), [svg2pdf.js](https://github.com/yWorks/svg2pdf.js), [opentype.js](https://github.com/opentypejs/opentype.js), [HarfBuzz](https://github.com/harfbuzz/harfbuzz) / [harfbuzzjs](https://github.com/harfbuzz/harfbuzzjs), [fast-png](https://github.com/image-js/fast-png), and [fast-text-encoding](https://github.com/samthor/fast-text-encoding).
+PDF Keep builds on [React](https://github.com/facebook/react), [i18next](https://github.com/i18next/i18next), [react-i18next](https://github.com/i18next/react-i18next), [jsPDF](https://github.com/parallax/jsPDF), [pdf-lib](https://github.com/Hopding/pdf-lib), [svg2pdf.js](https://github.com/yWorks/svg2pdf.js), [opentype.js](https://github.com/opentypejs/opentype.js), [HarfBuzz](https://github.com/harfbuzz/harfbuzz) / [harfbuzzjs](https://github.com/harfbuzz/harfbuzzjs), [fast-png](https://github.com/image-js/fast-png), and [fast-text-encoding](https://github.com/samthor/fast-text-encoding).
 
 Thanks to Google Fonts and the M PLUS, Inter, and Source Sans contributors. Third-party notices are in [licenses](licenses/), and regression-test font licenses are included alongside their fixtures in the source repository.

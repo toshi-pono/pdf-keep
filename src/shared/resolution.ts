@@ -1,3 +1,5 @@
+import { AppError } from "./errors";
+import { msg } from "./messages";
 export const MAX_PIXELS = 32_000_000;
 export const PAPER_SIZES = {
   A0: [841, 1189],
@@ -25,7 +27,7 @@ export function printResolution(
   destination: "pdf" | "frame" = "pdf",
 ) {
   if (![width, height].every((n) => Number.isFinite(n) && n > 0))
-    throw Error("Frame のサイズを確認してください。");
+    throw new AppError(msg("errors.frameDimensions"));
   const paperWidth = PAPER_SIZES[paper][orientation === "portrait" ? 0 : 1];
   const factor = QUALITY_FACTORS[quality];
   const targetWidth = Math.ceil(Math.ceil((paperWidth / 25.4) * 300) * factor);
@@ -59,7 +61,7 @@ export function validateSize(
   destination: "pdf" | "frame" = "pdf",
 ) {
   if (!Number.isFinite(scale) || scale <= 0)
-    throw new Error("解像度は正の数で指定してください。");
+    throw new AppError(msg("errors.positiveResolution"));
   if (
     ![width, height].every((n) => Number.isFinite(n) && n > 0) ||
     rasterDimensions(width, height, scale).width > 16384 ||
@@ -68,16 +70,12 @@ export function validateSize(
       rasterDimensions(width, height, scale).height >
       MAX_PIXELS
   )
-    throw new Error(
-      "Frame が大きすぎます。解像度を下げるか Frame を分割してください（最大 32 MP / 一辺 16384 px）。",
-    );
+    throw new AppError(msg("errors.frameTooLarge"));
   if (
     destination === "frame" &&
     Math.max(...Object.values(rasterDimensions(width, height, scale))) > 4096
   )
-    throw new Error(
-      "変換済み Frame の背景画像は一辺 4096 px までです。解像度を下げるか、長辺を 4096 px 以下に指定してください。",
-    );
+    throw new AppError(msg("errors.frameBackgroundLimit"));
 }
 /** Ignore floating point residue at exact pixel boundaries. */
 export function rasterDimensions(width: number, height: number, scale: number) {
@@ -107,12 +105,11 @@ export function resolveScale(
 ) {
   if (longEdge !== undefined) {
     if (!Number.isInteger(longEdge) || longEdge < 1 || longEdge > 16384)
-      throw new Error("長辺は 1〜16384 px の整数で指定してください。");
+      throw new AppError(msg("errors.longEdge"));
     scale = longEdge / Math.max(width, height);
   } else if (scale === 0) {
     const recommended = recommendedScale(width, height, destination);
-    if (recommended === null)
-      throw new Error("Frame のサイズを確認してください。");
+    if (recommended === null) throw new AppError(msg("errors.frameDimensions"));
     scale = recommended;
   }
   validateSize(width, height, scale, destination);

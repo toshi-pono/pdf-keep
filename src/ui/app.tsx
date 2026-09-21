@@ -1,3 +1,4 @@
+import { msg } from "../shared/messages";
 import { useState, type KeyboardEvent } from "react";
 import { AdvancedSettings } from "./advanced-settings";
 import { ExportActions } from "./export-actions";
@@ -29,7 +30,7 @@ export function App() {
       <nav
         className="tabs"
         role="tablist"
-        aria-label={ui.t("プラグインの画面")}
+        aria-label={ui.t(msg("navigation.views"))}
       >
         {tabs.map((value) => (
           <button
@@ -42,7 +43,11 @@ export function App() {
             onKeyDown={navigate}
             onClick={() => setTab(value)}
           >
-            {ui.t(value === "convert" ? "変換" : "詳細設定")}
+            {ui.t(
+              value === "convert"
+                ? msg("navigation.convert")
+                : msg("navigation.settings"),
+            )}
           </button>
         ))}
       </nav>
@@ -64,15 +69,13 @@ export function App() {
               }}
             >
               {ui.needsOutline
-                ? ui.t("一部の文字をアウトラインで出力")
+                ? ui.t(msg("outlines.someText"))
                 : ui.fontWarning}{" "}
               <span aria-hidden="true">→</span>
             </button>
           )}
           {ui.state.raster && (
-            <p className="mode-notice">
-              {ui.t("画像のみの PDF · 文字の検索・コピー不可")}
-            </p>
+            <p className="mode-notice">{ui.t(msg("raster.summary"))}</p>
           )}
         </section>
         <section

@@ -1,4 +1,5 @@
-import { errorMessage } from "../shared/errors";
+import { AppError, errorMessage } from "../shared/errors";
+import { msg } from "../shared/messages";
 import { type FontSpec } from "../shared/protocol";
 import catalog from "./google-font-catalog.json";
 import { canonicalFontFamily, normalizeFontName } from "./font-names";
@@ -16,10 +17,7 @@ export function googleFontURL(font: FontSpec): string {
     normalizedFamilies.get(normalizeFontName(canonicalFontFamily(font.family)));
   const url =
     family && families[family]?.[`${font.weight}${font.italic ? "i" : ""}`];
-  if (!url)
-    throw new Error(
-      "このフォント・太さは自動取得の対象外です。静的 TTF を追加してください。",
-    );
+  if (!url) throw new AppError(msg("errors.googleFontUnsupported"));
   return url;
 }
 
@@ -41,27 +39,22 @@ export async function downloadGoogleFont(
         try {
           response = await request(url);
         } catch (error) {
-          throw new Error(
-            `Google Fonts に接続できません。再取得してください（${errorMessage(error)}）。`,
+          throw new AppError(
+            msg("errors.googleFontConnection", { reason: errorMessage(error) }),
           );
         }
         if (!response.ok)
-          throw new Error(
-            `Google Fonts の取得に失敗しました（HTTP ${response.status}）。再取得するか TTF を追加してください。`,
+          throw new AppError(
+            msg("errors.googleFontHttp", { status: response.status }),
           );
         const bytes = new Uint8Array(await response.arrayBuffer());
         if (bytes.length > 32_000_000 || bytes.length < 12)
-          throw new Error("取得したフォントのサイズが不正です。");
+          throw new AppError(msg("errors.downloadedFontSize"));
         return bytes;
       })(),
       new Promise<never>((_, reject) => {
         timer = setTimeout(
-          () =>
-            reject(
-              new Error(
-                "Google Fonts の取得がタイムアウトしました。再取得してください。",
-              ),
-            ),
+          () => reject(new AppError(msg("errors.googleFontTimeout"))),
           20000,
         );
       }),

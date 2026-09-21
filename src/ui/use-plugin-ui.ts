@@ -1,5 +1,14 @@
+import {
+  type Message,
+  msg,
+  joinMessages,
+  uniqueMessages,
+} from "../shared/messages";
+import { AppError, errorMessage } from "../shared/errors";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { environmentLanguage, t, type Language } from "./i18n";
+import { useTranslation } from "react-i18next";
+import { formatMessage } from "./i18n";
+import { isLanguage, type Language } from "../i18n/languages";
 import {
   createPDF,
   registry,
@@ -20,7 +29,6 @@ import {
   type TextRangeRequest,
   type TextRangeResult,
 } from "../shared/protocol";
-import { errorMessage } from "../shared/errors";
 import {
   rasterDimensions,
   resolveScale,
@@ -34,7 +42,6 @@ import { downloadPDF } from "./save-pdf";
 
 type Selection = Extract<PluginMessage, { type: "selection" }>;
 interface UIState {
-  language: Language;
   selection: Selection | null;
   job: number | null;
   scale: string;
@@ -45,9 +52,9 @@ interface UIState {
   raster: boolean;
   outlineFallback: boolean;
   bulkSave: boolean;
-  status: string[];
+  status: Message[];
   noticeKind: "info" | "success" | "error";
-  warnings: string[];
+  warnings: Message[];
   download: {
     url: string;
     name: string;
@@ -60,8 +67,16 @@ const send = (message: UIMessage) =>
   parent.postMessage({ pluginMessage: message }, "*");
 
 export function usePluginUI() {
+  const { i18n } = useTranslation();
+  const language = i18n.resolvedLanguage as Language;
+  const manuallySelectedLanguage = useRef(false);
+  function changeLanguage(value: unknown) {
+    if (!isLanguage(value)) return;
+    manuallySelectedLanguage.current = true;
+    void i18n.changeLanguage(value);
+    send({ type: "language-save", language: value });
+  }
   const [state, setState] = useState<UIState>(() => ({
-    language: environmentLanguage(navigator.language),
     selection: null,
     job: null,
     scale: "1",
@@ -102,7 +117,7 @@ export function usePluginUI() {
       if (id === undefined || pending.id === id) {
         clearTimeout(pending.timer);
         ranges.current.delete(key);
-        pending.reject(new Error("キャンセルしました。"));
+        pending.reject(new AppError(msg("operation.cancelled")));
       }
   };
   const resolveRange = (id: number, range: TextRangeRequest) =>
@@ -111,7 +126,7 @@ export function usePluginUI() {
       const requestId = ++rangeSerial.current;
       const timer = setTimeout(() => {
         ranges.current.delete(requestId);
-        reject(new Error("文字範囲の取得がタイムアウトしました。"));
+        reject(new AppError(msg("errors.rangeTimeout")));
       }, 60000);
       ranges.current.set(requestId, { id, resolve, reject, timer });
       send({ type: "text-range", id, requestId, range });
@@ -121,7 +136,7 @@ export function usePluginUI() {
   );
   const persisted = useRef(new Set<string>());
   const requests = useRef(new Set<string>());
-  const fontErrors = useRef(new Map<string, string>());
+  const fontErrors = useRef(new Map<string, Message>());
   const patch = useCallback((change: Partial<UIState>) => {
     if (!active.current) return;
     const changedOutput = (
@@ -152,7 +167,7 @@ export function usePluginUI() {
     setState(current.current);
   }, []);
   const status = (
-    message: string,
+    message: Message,
     noticeKind: UIState["noticeKind"] = "info",
   ) => patch({ status: [message], noticeKind });
   const clearResult = () => {
@@ -175,12 +190,17 @@ export function usePluginUI() {
   };
   const check = (id: number) => {
     if (!active.current || current.current.job !== id)
-      throw new Error("キャンセルしました。");
+      throw new AppError(msg("operation.cancelled"));
   };
   async function receive(event: MessageEvent) {
     const m = event.data?.pluginMessage as PluginMessage;
     // Figma relays messages with a null source in its sandbox.
     if (!m || typeof m.type !== "string" || !active.current) return;
+    if (m.type === "language-settings") {
+      if (!manuallySelectedLanguage.current && isLanguage(m.language))
+        void i18n.changeLanguage(m.language);
+      return;
+    }
     if (m.type === "text-range-result") {
       const pending = ranges.current.get(m.requestId);
       if (pending && pending.id === m.id && current.current.job === m.id) {
@@ -189,7 +209,7 @@ export function usePluginUI() {
         if (m.result) pending.resolve(m.result);
         else
           pending.reject(
-            new Error(m.error || "文字のアウトラインを取得できませんでした。"),
+            new AppError(m.error || msg("errors.outlineUnavailable")),
           );
       }
       return;
@@ -223,7 +243,7 @@ export function usePluginUI() {
       try {
         if (!registry.has(m.key)) {
           if (!m.bytes)
-            throw new Error(m.error || "Google Fonts の取得に失敗しました。");
+            throw new AppError(m.error || msg("errors.googleFontFetch"));
           clearResult();
           registerFont(m.key, new Uint8Array(m.bytes));
         }
@@ -242,7 +262,7 @@ export function usePluginUI() {
           }
           persisted.current.add(key);
         } catch {
-          status("一部の保存フォントを読み込めませんでした。");
+          status(msg("fonts.someSavedUnavailable"));
         }
       }
       patch({});
@@ -251,9 +271,7 @@ export function usePluginUI() {
       patch({
         job: null,
         noticeKind: "success",
-        status: [
-          `「${m.name}」を追加しました。Figma 右側の Export から PDF を保存してください。`,
-        ],
+        status: [msg("export.frameCreated", { name: m.name })],
       });
     }
     if (m.type === "storage-error") status(m.message, "error");
@@ -268,8 +286,8 @@ export function usePluginUI() {
       let outputMode = m.bundle.mode;
       let summary: { copied: number; outlined: number } | undefined;
       try {
-        status("フォントを埋め込み、PDF を生成中…");
-        const warnings: string[] = [];
+        status(msg("progress.embeddingFonts"));
+        const warnings: Message[] = [];
         const bytes = await createPDF(m.bundle, () => check(id), {
           progress: (message) => {
             if (current.current.job === id) status(message);
@@ -312,35 +330,29 @@ export function usePluginUI() {
         };
         const notices = [
           ...(outputMode === "raster" || outputMode === "outline"
-            ? ["文字の検索・コピーはできなくなります。"]
+            ? [msg("raster.warning")]
             : []),
           ...(summary?.outlined && summary.copied
-            ? [
-                "再現できない範囲だけをアウトラインで保持しました。その他の文字は検索・コピーできます。",
-              ]
+            ? [msg("outlines.partialResult")]
             : []),
           ...warnings,
         ];
         patch({
           download: file,
-          warnings: [...new Set(notices)],
+          warnings: uniqueMessages(notices),
           noticeKind: "success",
-          status: ["PDFの保存を開始しました"],
+          status: [msg("export.downloadStarted")],
         });
         try {
           downloadPDF(file);
         } catch {
           // Keep a real, user-clickable link if the host rejects automatic download.
-          status(
-            "PDFを保存する準備ができました。保存ボタンを押してください。",
-            "info",
-          );
+          status(msg("export.ready"), "info");
         }
       } catch (error) {
         if (current.current.job === id)
           status(
-            String(error) +
-              "\n必要なら「全文字を画像化」を選んで再実行してください。",
+            joinMessages([errorMessage(error), msg("export.retryRaster")]),
             "error",
           );
       } finally {
@@ -355,6 +367,7 @@ export function usePluginUI() {
     active.current = true;
     window.addEventListener("message", receive);
     send({ type: "inspect" });
+    send({ type: "language-load" });
     return () => {
       active.current = false;
       window.removeEventListener("message", receive);
@@ -367,8 +380,8 @@ export function usePluginUI() {
     };
   }, []);
   useLayoutEffect(() => {
-    document.documentElement.lang = state.language;
-  }, [state.language]);
+    document.documentElement.lang = language;
+  }, [language]);
 
   function saveFont(key: string, save: boolean) {
     if (save) {
@@ -390,17 +403,15 @@ export function usePluginUI() {
       clearResult();
       registerFont(key, bytes);
       if (persisted.current.has(key)) saveFont(key, true);
-      status(
-        "フォントを登録しました。指定したスタイルと一致するか確認してください。",
-      );
+      status(msg("fonts.registered"));
     } catch (error) {
-      status(String(error), "error");
+      status(errorMessage(error), "error");
     }
     patch({});
   }
   async function importFonts(files: File[]) {
     let count = 0;
-    const errors: string[] = [];
+    const errors: Message[] = [];
     const save = current.current.bulkSave;
     for (const file of files) {
       try {
@@ -411,12 +422,11 @@ export function usePluginUI() {
         count++;
         if (save) for (const key of keys) saveFont(key, true);
       } catch (error) {
-        errors.push(`${file.name}: ${String(error)}`);
+        errors.push(joinMessages([`${file.name}: `, errorMessage(error)], ""));
       }
     }
     status(
-      `${count} 個のフォントを追加し、自動対応付けしました。` +
-        (errors.length ? "\n" + errors.join("\n") : ""),
+      joinMessages([msg("fonts.added", { count }), ...errors]),
       errors.length ? "error" : "info",
     );
   }
@@ -425,7 +435,7 @@ export function usePluginUI() {
     requestFonts();
     patch({});
   }
-  const translate = (source: string) => t(source, state.language);
+  const translate = (message: Message) => formatMessage(message, i18n);
   const selection = state.selection;
   const fonts = selection?.fonts ?? [];
   const missingFonts = fonts.filter((font) => !registry.has(fontKey(font)));
@@ -436,7 +446,7 @@ export function usePluginUI() {
     (font) => !requests.current.has(fontKey(font)),
   ).length;
   const fontWarning = unavailable
-    ? translate(`${unavailable} 種類のフォントは手動追加が必要です`)
+    ? translate(msg("fonts.manualCount", { count: unavailable }))
     : "";
   const busy = state.job !== null;
   const canOutline = state.outlineFallback && !state.raster;
@@ -495,7 +505,7 @@ export function usePluginUI() {
     !selection?.valid ||
     !!errorFrame ||
     (!state.raster && selection.diagnostics.some((d) => blocks(d, "frame")));
-  let scaleHint = translate("Frame のサイズに合わせて自動調整");
+  let scaleHint = translate(msg("quality.autoFrame"));
   let qualityLimited = false;
   let sizeLabel = "",
     sizeNote = "";
@@ -530,14 +540,16 @@ export function usePluginUI() {
           state.sample,
         )!;
         sizeLabel = translate(
-          `推定PDF容量 約 ${formatSizeRange(estimate.low, estimate.high)}`,
+          msg("estimate.size", {
+            size: formatSizeRange(estimate.low, estimate.high),
+          }),
         );
         sizeNote = translate(
           needsOutline
-            ? "一部の文字アウトラインの容量が追加される場合があります。"
+            ? msg("estimate.outlines")
             : estimate.sampled
-              ? "画像の圧縮・埋め込みフォントにより変動します。"
-              : "概算です。画像の内容・フォントにより大きく変動します。",
+              ? msg("estimate.sampled")
+              : msg("estimate.rough"),
         );
       }
     }
@@ -556,8 +568,8 @@ export function usePluginUI() {
       job: id,
       status: [
         destination === "pdf"
-          ? "書き出しを開始します…"
-          : "変換済み Frame を作成中…",
+          ? msg("progress.exportStarting")
+          : msg("progress.creatingFrame"),
       ],
     });
     send({
@@ -578,6 +590,8 @@ export function usePluginUI() {
     state,
     patch,
     t: translate,
+    language,
+    changeLanguage,
     busy,
     canOutline,
     needsOutline,
@@ -592,9 +606,9 @@ export function usePluginUI() {
     fontStatus: translate(
       missing
         ? missingFonts.some((f) => requests.current.has(fontKey(f)))
-          ? "Google Fonts を取得中…"
-          : `${missing} 種類のフォントは手動追加が必要です`
-        : "フォント準備完了 · PDF に自動埋め込み",
+          ? msg("progress.fetchingFonts")
+          : msg("fonts.manualCount", { count: missing })
+        : msg("fonts.allReady"),
     ),
     fontRows: fonts.map((font) => ({
       font,
@@ -627,9 +641,7 @@ export function usePluginUI() {
       patch({
         job: null,
         noticeKind: "info",
-        status: [
-          "キャンセルしました。Figma の描画処理が終了すると一時レイヤーを削除します。",
-        ],
+        status: [msg("operation.cancelCleanup")],
       });
     },
   };

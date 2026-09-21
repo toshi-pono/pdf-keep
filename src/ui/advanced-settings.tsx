@@ -1,3 +1,5 @@
+import { languages, supportedLanguages } from "../i18n/languages";
+import { msg } from "../shared/messages";
 import { FontSettings } from "./font-settings";
 import type { PluginUI } from "./use-plugin-ui";
 import { PAPER_SIZES, type PaperSize } from "../shared/resolution";
@@ -9,15 +11,13 @@ export function AdvancedSettings({ ui }: { ui: PluginUI }) {
       <FontSettings ui={ui} />
       <section className="settings-section">
         <h2>
-          {t("画質の基準")}{" "}
-          <Help label={t("用紙サイズについて")}>
-            {t(
-              "画像解像度の基準です。PDF のページサイズは元の Frame を保ちます。Medium は用紙幅 300 dpi・最大3倍、Sharp は1.3倍、Light は0.7倍。画像サイズ上限では自動調整します。",
-            )}
+          {t(msg("quality.reference"))}{" "}
+          <Help label={t(msg("quality.paperHelp"))}>
+            {t(msg("quality.paperDescription"))}
           </Help>
         </h2>
         <div className="setting-row">
-          <label htmlFor="paper-size">{t("用紙サイズ")}</label>
+          <label htmlFor="paper-size">{t(msg("quality.paperSize"))}</label>
           <select
             id="paper-size"
             value={state.paper}
@@ -34,7 +34,9 @@ export function AdvancedSettings({ ui }: { ui: PluginUI }) {
           </select>
         </div>
         <div className="setting-row paper-orientation">
-          <label htmlFor="paper-orientation">{t("用紙の向き")}</label>
+          <label htmlFor="paper-orientation">
+            {t(msg("quality.orientation"))}
+          </label>
           <select
             id="paper-orientation"
             value={state.orientation}
@@ -48,13 +50,13 @@ export function AdvancedSettings({ ui }: { ui: PluginUI }) {
               })
             }
           >
-            <option value="portrait">{t("縦")}</option>
-            <option value="landscape">{t("横")}</option>
+            <option value="portrait">{t(msg("quality.portrait"))}</option>
+            <option value="landscape">{t(msg("quality.landscape"))}</option>
           </select>
         </div>
       </section>
       <section className="settings-section">
-        <h2>{t("画像サイズ")}</h2>
+        <h2>{t(msg("quality.imageSize"))}</h2>
         <label className="check">
           <input
             id="pixel-mode"
@@ -68,7 +70,7 @@ export function AdvancedSettings({ ui }: { ui: PluginUI }) {
               })
             }
           />
-          {t("長辺を指定")}
+          {t(msg("quality.longestEdge"))}
         </label>
         <div
           id="custom-resolution"
@@ -77,7 +79,7 @@ export function AdvancedSettings({ ui }: { ui: PluginUI }) {
           <div className="pixel-field">
             <input
               id="long-edge"
-              aria-label={t("背景画像の長辺")}
+              aria-label={t(msg("quality.backgroundEdge"))}
               type="number"
               min="1"
               max="16384"
@@ -91,16 +93,17 @@ export function AdvancedSettings({ ui }: { ui: PluginUI }) {
         </div>
       </section>
       <section className="settings-section setting-row">
-        <label htmlFor="language">{t("言語")}</label>
+        <label htmlFor="language">{t(msg("settings.language"))}</label>
         <select
           id="language"
-          value={state.language}
-          onChange={(e) =>
-            patch({ language: e.currentTarget.value === "ja" ? "ja" : "en" })
-          }
+          value={ui.language}
+          onChange={(e) => ui.changeLanguage(e.currentTarget.value)}
         >
-          <option value="ja">日本語</option>
-          <option value="en">English</option>
+          {supportedLanguages.map((language) => (
+            <option key={language} value={language}>
+              {languages[language].label}
+            </option>
+          ))}
         </select>
       </section>
     </>

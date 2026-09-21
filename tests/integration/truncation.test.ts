@@ -1,3 +1,5 @@
+import { createI18n, formatMessage } from "../../src/ui/i18n";
+const i18n = createI18n("ja");
 import test from "node:test";
 import assert from "node:assert/strict";
 import { setup, settle } from "../helpers/figma";
@@ -53,7 +55,9 @@ for (const destination of ["export", "create-frame"]) {
       assert.equal(s.fontLoadCount(), 0);
       assert(
         !s.messages.some(
-          (m) => m.type === "progress" && m.message.includes("省略"),
+          (m) =>
+            m.type === "progress" &&
+            formatMessage(m.message, i18n).includes("省略"),
         ),
       );
     }
@@ -89,7 +93,9 @@ test("unmatched truncation fails without exporting hidden text and cleans up", a
   await settle();
   assert(
     s.messages.some(
-      (m) => m.type === "error" && /再現できません|32回/.test(m.message),
+      (m) =>
+        m.type === "error" &&
+        /再現できません|32回/.test(formatMessage(m.message, i18n)),
     ),
   );
   assert(!s.messages.some((m) => m.type === "bundle"));

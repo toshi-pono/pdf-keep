@@ -1,3 +1,4 @@
+import { msg } from "../shared/messages";
 import { blocks } from "../shared/protocol";
 import type { PluginUI } from "./use-plugin-ui";
 
@@ -9,7 +10,7 @@ export function NotificationCard({ ui }: { ui: PluginUI }) {
     []
   ).map((d) => {
     const outlined = ui.canOutline && blocks(d, "pdf");
-    return `${t(outlined ? "PDF: 該当範囲をアウトラインで保持" : d.severity === "warning" ? "警告（変換可能）" : "エラー")} · ${d.nodeId ? d.name : t(d.name)}: ${t(d.reason)}`;
+    return `${t(outlined ? msg("outlines.diagnostic") : d.severity === "warning" ? msg("notice.warning") : msg("notice.error"))} · ${d.label ? t(d.label) : d.name}: ${t(d.reason)}`;
   });
   const messages = state.status.map(t);
   const hasStatus = messages.length > 0;
@@ -42,13 +43,13 @@ export function NotificationCard({ ui }: { ui: PluginUI }) {
   const title = hasStatus
     ? statusText.split("\n")[0]
     : items.length
-      ? t(`確認事項 ${items.length}件`)
+      ? t(msg("notice.reviewCount", { count: items.length }))
       : "";
   return (
     <section
       className={`notification-card ${severity}`}
       hidden={!title && !items.length}
-      aria-label={t("処理状況")}
+      aria-label={t(msg("notice.status"))}
     >
       <div className="notification-heading">
         <span className="notification-icon" aria-hidden="true">
@@ -76,15 +77,15 @@ export function NotificationCard({ ui }: { ui: PluginUI }) {
             className="icon-button"
             disabled={ui.pdfDisabled}
             onClick={() => ui.start("pdf")}
-            aria-label={t("PDFを再生成して保存")}
-            title={t("PDFを再生成して保存")}
+            aria-label={t(msg("actions.regenerate"))}
+            title={t(msg("actions.regenerate"))}
           >
             ↻
           </button>
         )}
         {ui.busy && (
           <button id="cancel" className="quiet" onClick={ui.cancel}>
-            {t("キャンセル")}
+            {t(msg("actions.cancel"))}
           </button>
         )}
       </div>
@@ -92,7 +93,9 @@ export function NotificationCard({ ui }: { ui: PluginUI }) {
         <details className="notification-details">
           <summary>
             <span>
-              {hasStatus ? t(`確認事項 ${items.length}件`) : t("詳細を表示")}
+              {hasStatus
+                ? t(msg("notice.reviewCount", { count: items.length }))
+                : t(msg("notice.details"))}
             </span>
             <span className="disclosure-chevron" aria-hidden="true">
               ⌄

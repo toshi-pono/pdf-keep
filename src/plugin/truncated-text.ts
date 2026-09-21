@@ -1,3 +1,5 @@
+import { type Message, msg } from "../shared/messages";
+import { AppError } from "../shared/errors";
 import { TemporaryExport } from "./temporary";
 import { operationBudget } from "../shared/operation-budget";
 import { sameBytes, textPixelComparator } from "../pdf/text-pixels";
@@ -96,15 +98,16 @@ export async function materializeTruncatedText(
   parent: FrameNode,
   temporary: TemporaryExport,
   check: () => void,
-  progress: (stage: string) => void = () => {},
+  progress: (stage: Message) => void = () => {},
 ): Promise<TextNode> {
   const budget = operationBudget(check, 15000, progress);
   const loaded = new Set<string>();
   for (const { fontName } of source.getStyledTextSegments(["fontName"])) {
     const key = JSON.stringify(fontName);
     if (loaded.has(key)) continue;
-    await budget.run(`フォントを準備中: ${fontName.family}`, () =>
-      figma.loadFontAsync(fontName),
+    await budget.run(
+      msg("progress.preparingFont", { family: fontName.family }),
+      () => figma.loadFontAsync(fontName),
     );
     loaded.add(key);
   }
@@ -131,15 +134,13 @@ export async function materializeTruncatedText(
   try {
     // Prevent a single synchronous PNG decode from monopolizing the sandbox.
     if (source.width * source.height > 4_000_000)
-      throw new Error(
-        "省略文字の比較領域が大きすぎます（400万px超）。文字レイヤーの幅・高さを調整してください。",
-      );
-    const pixels = await budget.run("元の表示を取得中", () =>
+      throw new AppError(msg("errors.truncationArea"));
+    const pixels = await budget.run(msg("progress.originalAppearance"), () =>
       reference.exportAsync(options),
     );
     const comparePixels = textPixelComparator(pixels);
     check();
-    const svg = await budget.run("省略位置を取得中", () =>
+    const svg = await budget.run(msg("progress.truncationPoint"), () =>
       reference.exportAsync({
         format: "SVG_STRING",
         svgOutlineText: false,
@@ -178,10 +179,11 @@ export async function materializeTruncatedText(
     let renders = 0;
     const render = (n: TextNode) => {
       if (renders >= maxRenders)
-        throw new Error(
-          "省略文字の表示を32回の比較で確認できませんでした。処理を中止しました。文字幅や省略設定を確認してください。",
-        );
-      const stage = `表示を比較中 ${++renders}/${maxRenders}`;
+        throw new AppError(msg("errors.truncationComparisons"));
+      const stage = msg("progress.comparing", {
+        current: ++renders,
+        total: maxRenders,
+      });
       return budget.run(stage, async () => {
         if (n.width === source.width) return n.exportAsync(options);
         // Figma's truncator can place the ellipsis where normal word wrapping
@@ -207,7 +209,7 @@ export async function materializeTruncatedText(
       });
     };
     for (const { end, suffix, inherit } of candidates) {
-      budget.check("表示の比較");
+      budget.check(msg("progress.appearanceComparison"));
       const n = clone();
       let accepted = false;
       try {
@@ -275,8 +277,8 @@ export async function materializeTruncatedText(
         if (!accepted) remove(n);
       }
     }
-    throw new Error(
-      `「${source.name}」の省略表示を文字として再現できませんでした。文字幅や省略設定を確認してください。`,
+    throw new AppError(
+      msg("errors.truncationReproduction", { name: source.name }),
     );
   } finally {
     remove(reference);

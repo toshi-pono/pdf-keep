@@ -151,7 +151,11 @@ try {
       () => {},
       { warning: (message) => warnings.push(message) },
     );
-    if (warnings.length !== 1 || !warnings[0].includes("Native list"))
+    if (
+      warnings.length !== 1 ||
+      warnings[0].key !== "outlines.vectorLayer" ||
+      warnings[0].params.name !== "Native list and script glyphs"
+    )
       throw Error(JSON.stringify(warnings));
     const vectorAsset = texts.find((asset) => asset.outlined);
     for (const payload of [

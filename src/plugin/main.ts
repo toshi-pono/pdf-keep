@@ -1,3 +1,6 @@
+import { languageSettings } from "./language-settings";
+import { AppError, errorMessage } from "../shared/errors";
+import { msg } from "../shared/messages";
 import { TemporaryExport, recoverTemporary } from "./temporary";
 import { materializeTruncatedText } from "./truncated-text";
 import {
@@ -19,7 +22,6 @@ import {
   type Mode,
 } from "../shared/protocol";
 import { nearbyPosition } from "../shared/geometry";
-import { errorMessage } from "../shared/errors";
 figma.showUI(__html__, { width: 480, height: 680, themeColors: true });
 const send = (message: PluginMessage) => figma.ui.postMessage(message);
 let activeTemporary: TemporaryExport | undefined;
@@ -41,7 +43,7 @@ const storageReady = figma.clientStorage
   .catch(() =>
     send({
       type: "storage-error",
-      message: "保存済みフォントを読み込めませんでした。再登録してください。",
+      message: msg("errors.savedFontsLoad"),
     }),
   );
 function selection() {
@@ -56,7 +58,8 @@ function report() {
     if (!f) {
       send({
         type: "selection",
-        name: "Frame を一つ選択してください",
+        name: "",
+        label: msg("selection.empty"),
         valid: false,
         fonts: [],
         diagnostics: [],
@@ -77,10 +80,18 @@ function report() {
   } catch (e) {
     send({
       type: "selection",
-      name: "選択の解析に失敗しました",
+      name: "",
+      label: msg("selection.failed"),
       valid: false,
       fonts: [],
-      diagnostics: [{ nodeId: "", name: "解析", reason: String(e) }],
+      diagnostics: [
+        {
+          nodeId: "",
+          name: "",
+          label: msg("selection.inspection"),
+          reason: errorMessage(e),
+        },
+      ],
     });
   }
 }
@@ -124,7 +135,7 @@ async function estimatePreview(revision: number) {
           continue;
         const header = new DataView(png.buffer, png.byteOffset, png.byteLength);
         const pixels = header.getUint32(16) * header.getUint32(20);
-        if (!pixels) throw Error("Invalid preview");
+        if (!pixels) throw new AppError("Invalid preview");
         send({
           type: "estimate-preview",
           revision: current,
@@ -149,7 +160,7 @@ figma.on("close", () => {
   activeTemporary?.dispose();
 });
 function check(id: number) {
-  if (cancelled.has(id)) throw new Error("キャンセルしました。");
+  if (cancelled.has(id)) throw new AppError(msg("operation.cancelled"));
 }
 async function exportFrame(
   id: number,
@@ -165,7 +176,7 @@ async function exportFrame(
     send({
       type: "error",
       id,
-      message: "別の書き出し処理中です。少し待ってから再実行してください。",
+      message: msg("errors.exportRunning"),
     });
     return;
   }
@@ -176,9 +187,9 @@ async function exportFrame(
   let wrapper: FrameNode | undefined;
   try {
     const frame = selection();
-    if (!frame) throw new Error("Frame を一つ選択してください。");
+    if (!frame) throw new AppError(msg("errors.selectFrame"));
     if (revision !== undefined && revision !== selectionRevision)
-      throw new Error("選択が変わりました。もう一度 PDF を作成してください。");
+      throw new AppError(msg("errors.selectionChanged"));
     const automatic = scale === 0 && longEdge === undefined;
     scale = resolveScale(
       frame.width,
@@ -209,9 +220,7 @@ async function exportFrame(
     )
       mode = "outline";
     if (mode === "text" && diagnostics.some((d) => blocks(d, destination)))
-      throw new Error(
-        "文字を保持できないレイヤーがあります。診断を確認してください。",
-      );
+      throw new AppError(msg("errors.unpreservableText"));
     wrapper = figma.createFrame();
     temporary.add(wrapper);
     wrapper.name = "PDF Keep temporary export";
@@ -247,7 +256,7 @@ async function exportFrame(
           send({
             type: "progress",
             id,
-            message: `省略表示を文字に変換中: ${n.name}`,
+            message: msg("progress.convertTruncated", { name: n.name }),
           });
           const local = await materializeTruncatedText(
             n,
@@ -258,7 +267,10 @@ async function exportFrame(
               send({
                 type: "progress",
                 id,
-                message: `省略文字: ${stage} — ${n.name}`,
+                message: msg("progress.truncatedText", {
+                  stage,
+                  name: n.name,
+                }),
               }),
           );
           local.opacity = 0;
@@ -267,7 +279,11 @@ async function exportFrame(
       if (mode === "text" && destination === "pdf")
         for (const n of texts) {
           temporary.check();
-          send({ type: "progress", id, message: `文字を取得中: ${n.name}` });
+          send({
+            type: "progress",
+            id,
+            message: msg("progress.readingText", { name: n.name }),
+          });
           // Export a detached, untransformed clone so the SVG's coordinates are
           // local. Reapply the full ancestor transform exactly once in the PDF.
           const local = (prepared.get(n) ?? n).clone();
@@ -346,7 +362,7 @@ async function exportFrame(
       destination === "pdf" &&
       (mode === "outline" || (mode === "text" && outlineFallback))
     ) {
-      send({ type: "progress", id, message: "文字をアウトラインに変換中…" });
+      send({ type: "progress", id, message: msg("progress.outlining") });
       try {
         bundle.outlinePDF = await outlineTextPDF(
           copy,
@@ -360,7 +376,7 @@ async function exportFrame(
         bundle.outlineError = errorMessage(error);
       }
     }
-    send({ type: "progress", id, message: "背景を安全に焼き込み中…" });
+    send({ type: "progress", id, message: msg("progress.background") });
     if (mode === "text" || mode === "outline") {
       const strip = (n: SceneNode) => {
         if (!visible(n)) return;
@@ -460,8 +476,13 @@ async function exportFrame(
     if (protocol !== 2) report();
   }
 }
+const handleLanguageSettings = languageSettings(figma.clientStorage, send);
 let storageQueue = Promise.resolve();
 figma.ui.onmessage = (m: UIMessage) => {
+  if (m.type === "language-load" || m.type === "language-save") {
+    void handleLanguageSettings(m);
+    return;
+  }
   if (m.type === "export-finished") finishSearchableExport(m.id);
   if (m.type === "text-range" && Number.isSafeInteger(m.requestId))
     void resolveTextRange(m.id, m.requestId, m.range, send);
@@ -496,7 +517,7 @@ figma.ui.onmessage = (m: UIMessage) => {
         await storageReady;
         if (m.type === "font-save") {
           if (m.bytes.length > 32_000_000)
-            throw new Error("フォントが大きすぎます。");
+            throw new AppError(msg("errors.fontTooLarge"));
           saved[m.key] = m.bytes;
         } else delete saved[m.key];
         await figma.clientStorage.setAsync(storageKey, saved);
@@ -504,8 +525,7 @@ figma.ui.onmessage = (m: UIMessage) => {
       .catch(() =>
         send({
           type: "storage-error",
-          message:
-            "端末へのフォント保存に失敗しました。このセッションでは使用できます。",
+          message: msg("errors.fontSave"),
         }),
       );
 };

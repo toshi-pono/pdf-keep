@@ -1,8 +1,10 @@
+import { errorMessage } from "../../src/shared/errors";
+import { msg, type Message } from "../../src/shared/messages";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { operationBudget } from "../../src/shared/operation-budget";
 test("an unresponsive Figma call times out with the current stage", async () => {
-  const stages: string[] = [];
+  const stages: Message[] = [];
   const budget = operationBudget(
     () => {},
     20,
@@ -10,7 +12,13 @@ test("an unresponsive Figma call times out with the current stage", async () => 
   );
   await assert.rejects(
     budget.run("フォントを準備中", () => new Promise(() => {})),
-    /制限時間.*フォントを準備中/,
+    (error: unknown) => {
+      assert.deepEqual(
+        errorMessage(error),
+        msg("errors.truncationTimeout", { stage: "フォントを準備中" }),
+      );
+      return true;
+    },
   );
   assert.deepEqual(stages, ["フォントを準備中"]);
 });
@@ -36,6 +44,6 @@ test("the deadline is shared across stages and late results cannot be accepted",
   assert.equal(await budget.run("first", async () => 5), 5);
   await assert.rejects(
     budget.run("second", () => new Promise((r) => setTimeout(() => r(2), 40))),
-    /制限時間/,
+    /errors.truncationTimeout/,
   );
 });

@@ -1,3 +1,4 @@
+import { sameMessage, type Message, msg } from "../shared/messages";
 import { contains, intersects } from "../shared/geometry";
 import { fontKey, type FontSpec, type Diagnostic } from "../shared/protocol";
 export function visible(node: SceneNode) {
@@ -50,7 +51,7 @@ export function inspect(frame: FrameNode) {
   const paintOrder: SceneNode[] = [];
   const issue = (
     n: SceneNode,
-    reason: string,
+    reason: Message,
     destination?: "pdf",
     severity: "error" | "warning" = "error",
   ) =>
@@ -63,8 +64,7 @@ export function inspect(frame: FrameNode) {
     });
   function walk(n: SceneNode, ancestors: SceneNode[]) {
     if (!visible(n)) return;
-    if (n.type === "TEXT_PATH")
-      issue(n, "パス上の文字は初版では対応していません。");
+    if (n.type === "TEXT_PATH") issue(n, msg("errors.textPathUnsupported"));
     if (n.type === "TEXT") {
       if (!hasPaint(n)) return;
       paintOrder.push(n);
@@ -72,31 +72,29 @@ export function inspect(frame: FrameNode) {
       const box = n.absoluteRenderBounds ?? n.absoluteBoundingBox;
       if (!box) return;
       if (!contains(frame.absoluteBoundingBox!, box))
-        issue(n, "Frame の外に出る文字は保持できません。");
-      if (n.hasMissingFont)
-        issue(n, "Figma 側で使用フォントが不足しています。");
+        issue(n, msg("errors.textOutsideFrame"));
+      if (n.hasMissingFont) issue(n, msg("errors.figmaFontMissing"));
       for (const a of [...ancestors, n]) {
         if (a !== n && "opacity" in a && a.opacity !== 1)
-          issue(n, "親レイヤーの半透明合成は未対応です。");
+          issue(n, msg("errors.parentOpacity"));
         if (
           "blendMode" in a &&
           !["PASS_THROUGH", "NORMAL"].includes(a.blendMode)
         )
-          issue(n, "文字に影響する描画モードは未対応です。");
+          issue(n, msg("errors.blendMode"));
         if ("effects" in a && a.effects.some((e) => e.visible))
-          issue(n, "文字に影響する影・ぼかし等の効果は未対応です。");
-        if ("isMask" in a && a.isMask)
-          issue(n, "文字を含むマスクは未対応です。");
+          issue(n, msg("errors.effects"));
+        if ("isMask" in a && a.isMask) issue(n, msg("errors.textMask"));
         if (
           "children" in a &&
           a.children.some((c) => "isMask" in c && c.isMask && visible(c))
         )
-          issue(n, "文字と同じ階層にマスクがあります。");
+          issue(n, msg("errors.siblingMask"));
         if ("clipsContent" in a && a.clipsContent) {
           if (!contains(a.absoluteBoundingBox!, box))
-            issue(n, "文字が Clip content の境界にかかっています。");
+            issue(n, msg("errors.clipBoundary"));
           if ("cornerRadius" in a && a.cornerRadius !== 0)
-            issue(n, "角丸クリッピング内の文字は保守的に非対応とします。");
+            issue(n, msg("errors.roundedClip"));
         }
       }
       if (
@@ -111,7 +109,7 @@ export function inspect(frame: FrameNode) {
               s.fills.some((f) => f.visible !== false && f.type !== "SOLID"),
             )
         )
-          issue(n, "文字のグラデーション・画像塗りは未対応です。");
+          issue(n, msg("errors.textFill"));
       }
       if (
         n
@@ -123,8 +121,8 @@ export function inspect(frame: FrameNode) {
                 .length !== 1,
           )
       )
-        issue(n, "非表示の文字範囲、または複数の文字塗りは未対応です。");
-      if (n.strokes.length) issue(n, "文字の輪郭線は未対応です。");
+        issue(n, msg("errors.hiddenOrMultipleFills"));
+      if (n.strokes.length) issue(n, msg("errors.textStroke"));
       return;
     }
     if (hasPaint(n)) paintOrder.push(n);
@@ -138,12 +136,7 @@ export function inspect(frame: FrameNode) {
       // Container borders can paint over descendants.
       if ("strokes" in n && paints(n.strokes))
         for (const t of texts.filter((t) => ancestorsOf(t).includes(n)))
-          issue(
-            t,
-            "親コンテナの輪郭線と文字が重なる可能性があります。変換後の見た目を確認してください。",
-            undefined,
-            "warning",
-          );
+          issue(t, msg("errors.parentStroke"), undefined, "warning");
     }
   }
   walk(frame, []);
@@ -159,7 +152,7 @@ export function inspect(frame: FrameNode) {
     if (later)
       issue(
         t,
-        `前面の「${later.name}」と重なる可能性があります。変換すると文字が前面になります。`,
+        msg("errors.overlap", { name: later.name }),
         undefined,
         "warning",
       );
@@ -169,8 +162,9 @@ export function inspect(frame: FrameNode) {
     fonts: mergeFonts(texts.flatMap(fontsFor)),
     diagnostics: diagnostics.filter(
       (d, i, a) =>
-        a.findIndex((x) => x.nodeId === d.nodeId && x.reason === d.reason) ===
-        i,
+        a.findIndex(
+          (x) => x.nodeId === d.nodeId && sameMessage(x.reason, d.reason),
+        ) === i,
     ),
   };
 }

@@ -1,3 +1,5 @@
+import { AppError } from "../shared/errors";
+import { msg } from "../shared/messages";
 import { measure } from "../shared/performance";
 import type { RegisteredFont } from "./create-pdf";
 export interface Rect {
@@ -32,7 +34,7 @@ async function renderMask(
     box.height <= 0 ||
     box.width * box.height * scale * scale > 4_000_000
   )
-    throw Error("文字の比較領域が大きすぎます。");
+    throw new AppError(msg("errors.glyphArea"));
   const clone = svg.cloneNode(true) as SVGSVGElement;
   clone.setAttribute("viewBox", `${box.x} ${box.y} ${box.width} ${box.height}`);
   const width = Math.ceil(box.width * scale),

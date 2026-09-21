@@ -186,7 +186,10 @@ try {
       terminated,
     };
   }, fonts);
-  assert(result.stages.filter((s) => s.includes("軽量化中")).length === 2);
+  assert(
+    result.stages.filter((s) => s.key === "progress.subsettingFont").length ===
+      2,
+  );
   assert.equal(result.requestedCharacters.length, 2);
   assert(
     result.requestedCharacters[0].includes("\u0301") &&
@@ -204,7 +207,7 @@ try {
   assert.equal(result.fallbackWarnings.length, 2);
   assert.deepEqual(result.cancelledWarnings, []);
   assert.equal(result.cancelMessage, "cancelled");
-  assert.match(result.timeoutMessage, /完了しません/);
+  assert.match(result.timeoutMessage, /errors.subsetTimeout/);
   assert.equal(result.terminated, 3);
   const stats = {};
   for (const [name, bytes] of Object.entries(result.pdfs)) {

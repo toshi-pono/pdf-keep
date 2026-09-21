@@ -154,12 +154,12 @@ test("unresolved operations time out; late callbacks cannot resume a disposed ex
     },
     15,
   );
-  await assert.rejects(pending, /制限時間/);
+  await assert.rejects(pending, /errors.stageTimeout/);
   session.dispose();
   resolve();
   await settle();
   assert.equal(resumed, false);
-  assert.throws(session.check, /キャンセル/);
+  assert.throws(session.check, /operation.cancelled/);
 });
 
 test("three failed proof ranges need four SVG exports and one merged PDF", async (t) => {
@@ -213,7 +213,7 @@ for (const [format, timeout] of [
     node.exportAsync = () => new Promise(() => {});
     const rejected = assert.rejects(
       session.export(node, { format } as any),
-      /制限時間/,
+      /errors.stageTimeout/,
     );
     t.mock.timers.tick(timeout);
     await rejected;
@@ -249,7 +249,7 @@ test("45 second range deadline includes successive native exports", async (t) =>
     },
     45000,
   );
-  const rejected = assert.rejects(pending, /制限時間/);
+  const rejected = assert.rejects(pending, /errors.stageTimeout/);
   t.mock.timers.tick(25000);
   first("<svg/>");
   for (let i = 0; i < 8; i++) await Promise.resolve();

@@ -53,14 +53,16 @@ test("font persistence, stale jobs, downloads and unmount cleanup", async (t) =>
     ),
   );
   const fileInput = await react.locator("#fonts .file-input").elementHandle();
-  await react.locator("#language").selectOption("en");
-  assert(
-    await react.evaluate(
-      (node) => node === document.querySelector("#fonts .file-input"),
-      fileInput,
-    ),
-    "language changes preserve the font component and file input",
-  );
+  for (const language of ["ko", "ja", "en"]) {
+    await react.locator("#language").selectOption(language);
+    assert(
+      await react.evaluate(
+        (node) => node === document.querySelector("#fonts .file-input"),
+        fileInput,
+      ),
+      "language changes preserve the font component and file input",
+    );
+  }
   assert(await react.locator("#bulk-save").isChecked());
   assert(await react.locator("#fonts .check input").isChecked());
   assert(await react.locator("#panel-settings").isVisible());
@@ -136,8 +138,11 @@ test("font persistence, stale jobs, downloads and unmount cleanup", async (t) =>
     await react.locator("#download").getAttribute("download"),
     "React lifecycle-raster.pdf",
   );
-  await react.locator("#language").selectOption("en");
-  assert.equal(await react.locator("#download").getAttribute("href"), url);
+  for (const language of ["ko", "ja", "en"]) {
+    await react.locator("#language").selectOption(language);
+    assert.equal(await react.locator("#download").getAttribute("href"), url);
+    assert(!(await react.evaluate((url) => window.revoked.includes(url), url)));
+  }
   await deliverTo(react, {
     type: "selection",
     valid: true,

@@ -32,8 +32,14 @@ Figma デスクトップ版の **Plugins → Development → Import plugin from 
 
 コードの整形は `npm run format`、全検証は `npm run check`、配布 ZIP の作成は `npm run package` で実行します。ブラウザテストに必要なツール、構成、CI は[開発手順](docs/development.md)を参照してください。
 
+## 言語対応
+
+画面は日本語・英語・韓国語に対応しています。「詳細設定 → 言語」で選択すると、この端末に設定を保存します。起動時は保存した選択、ブラウザの言語、英語の順に使用します。`ko-KR` などの地域付きコードも基本言語で判定します。読み込み失敗時は環境言語を使用し、保存失敗時は現在の選択を維持したまま通知します。処理中の言語変更でも、書き出しを再開せずに既存の進捗・警告・エラーを切り替えられます。
+
+翻訳は i18next / react-i18next で管理し、アプリに同梱します。言語を追加するときは `src/i18n/languages.ts` にコードと母語表記を登録し、`src/i18n/locales/` に型付きリソースを追加して `src/ui/i18n.ts` に登録します。文言は意味に基づく安定したキーで全言語に追加し、名前付きの `{{変数}}`、件数には `_one` / `_other` を使います。型付きの `msg(key, params)` を利用し、例外・コールバック・Worker／プラグイン通信でも構造を保ち、UI で表示するときだけ翻訳してください。外部エラーや文書の名前は原文の文字列として扱います。`npm run check` で翻訳の網羅性、変数、設定保存、言語切り替えを検証できます。
+
 ## Acknowledgement
 
-PDF Keep は [React](https://github.com/facebook/react)、[jsPDF](https://github.com/parallax/jsPDF)、[pdf-lib](https://github.com/Hopding/pdf-lib)、[svg2pdf.js](https://github.com/yWorks/svg2pdf.js)、[opentype.js](https://github.com/opentypejs/opentype.js)、[HarfBuzz](https://github.com/harfbuzz/harfbuzz) / [harfbuzzjs](https://github.com/harfbuzz/harfbuzzjs)、[fast-png](https://github.com/image-js/fast-png)、[fast-text-encoding](https://github.com/samthor/fast-text-encoding) を利用しています。
+PDF Keep は [React](https://github.com/facebook/react)、[i18next](https://github.com/i18next/i18next)、[react-i18next](https://github.com/i18next/react-i18next)、[jsPDF](https://github.com/parallax/jsPDF)、[pdf-lib](https://github.com/Hopding/pdf-lib)、[svg2pdf.js](https://github.com/yWorks/svg2pdf.js)、[opentype.js](https://github.com/opentypejs/opentype.js)、[HarfBuzz](https://github.com/harfbuzz/harfbuzz) / [harfbuzzjs](https://github.com/harfbuzz/harfbuzzjs)、[fast-png](https://github.com/image-js/fast-png)、[fast-text-encoding](https://github.com/samthor/fast-text-encoding) を利用しています。
 
 依存ライブラリのライセンスは [licenses](licenses/)、回帰テスト用フォントのライセンスはソースリポジトリ内の各素材に同梱しています。

@@ -1,3 +1,5 @@
+import { AppError } from "../shared/errors";
+import { msg } from "../shared/messages";
 import { TemporaryExport } from "./temporary";
 /** Produce only outlined text, retaining its ancestor transforms and clipping.
  * Non-text artwork is baked separately into the opaque background image.
@@ -59,7 +61,7 @@ export async function outlineTextPDF(
     check();
     // Do not silently accept editable or hidden text from an outline export.
     if (/<(?:[\w.-]+:)?(?:text|tspan|textPath)\b/i.test(svg))
-      throw new Error("文字のアウトライン化に失敗しました。");
+      throw new AppError(msg("errors.outlineConversion"));
     outlined = figma.createNodeFromSvg(svg);
     temporary.add(outlined);
     const bytes = await temporary.export(

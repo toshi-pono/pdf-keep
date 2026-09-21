@@ -1,3 +1,5 @@
+import type { Language } from "../i18n/languages";
+import type { Message } from "./messages";
 export type Mode = "text" | "raster" | "outline";
 export interface FontSpec {
   family: string;
@@ -11,14 +13,15 @@ export interface Diagnostic {
   destination?: "pdf";
   nodeId: string;
   name: string;
-  reason: string;
+  label?: Message;
+  reason: Message;
 }
 export interface TextAsset {
   source?: {
     key: string;
     characters: string;
     segments: TextSegment[];
-    fallbackReason?: string;
+    fallbackReason?: Message;
     composition?: boolean;
   };
   /** Local text coordinates to the exported frame: a, b, c, d. */
@@ -44,7 +47,7 @@ export interface TextSegment {
   fontSize: number;
   features: Record<string, boolean>;
   fills?: unknown[];
-  fallbackReason?: string;
+  fallbackReason?: Message;
   invisible?: boolean;
   list: "NONE" | "ORDERED" | "UNORDERED";
   indentation: number;
@@ -76,10 +79,12 @@ export interface ExportBundle {
   png: Uint8Array;
   /** Transparent, full-frame PDF containing outlined text only. */
   outlinePDF?: Uint8Array;
-  outlineError?: string;
+  outlineError?: Message;
   texts: TextAsset[];
 }
 export type UIMessage =
+  | { type: "language-load" }
+  | { type: "language-save"; language: Language }
   | { type: "inspect" }
   | { type: "estimate-preview"; revision: number }
   | { type: "google-font"; font: FontSpec }
@@ -104,17 +109,19 @@ export type UIMessage =
   | { type: "font-save"; key: string; bytes: number[] }
   | { type: "font-delete"; key: string };
 export type PluginMessage =
+  | { type: "language-settings"; language?: Language }
   | {
       type: "text-range-result";
       id: number;
       requestId: number;
       result?: TextRangeResult;
-      error?: string;
+      error?: Message;
     }
   | {
       type: "selection";
       revision?: number;
       name: string;
+      label?: Message;
       valid: boolean;
       width?: number;
       height?: number;
@@ -125,7 +132,7 @@ export type PluginMessage =
       type: "google-font-result";
       key: string;
       bytes?: number[];
-      error?: string;
+      error?: Message;
     }
   | {
       type: "estimate-preview";
@@ -135,10 +142,10 @@ export type PluginMessage =
     }
   | { type: "bundle"; bundle: ExportBundle }
   | { type: "frame-created"; id: number; name: string }
-  | { type: "error"; id: number; message: string }
-  | { type: "progress"; id: number; message: string }
+  | { type: "error"; id: number; message: Message }
+  | { type: "progress"; id: number; message: Message }
   | { type: "saved-fonts"; fonts: Record<string, number[]> }
-  | { type: "storage-error"; message: string };
+  | { type: "storage-error"; message: Message };
 export const fontKey = (f: Pick<FontSpec, "family" | "style">) =>
   JSON.stringify([f.family, f.style]);
 export function blocks(d: Diagnostic, destination: "pdf" | "frame") {

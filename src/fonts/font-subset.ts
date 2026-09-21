@@ -1,3 +1,5 @@
+import { type KeyMessage, msg } from "../shared/messages";
+import { AppError } from "../shared/errors";
 import wasm from "harfbuzzjs/dist/harfbuzz-subset.wasm";
 
 // Self-contained: serialized into a Blob worker by the UI bundle.
@@ -19,12 +21,22 @@ function subsetWorker() {
       initialized ??= WebAssembly.instantiate(data.wasm);
       hb = (await initialized).instance.exports;
       buffer = hb.malloc(data.font.byteLength);
-      if (!buffer) throw Error("フォント処理用メモリを確保できません。");
+      if (!buffer)
+        throw {
+          kind: "message",
+          key: "errors.fontMemory",
+          params: {},
+        } satisfies KeyMessage;
       new Uint8Array(hb.memory.buffer).set(data.font, buffer);
       blob = hb.hb_blob_create(buffer, data.font.byteLength, 2, 0, 0);
       face = hb.hb_face_create(blob, 0);
       input = hb.hb_subset_input_create_or_fail();
-      if (!input) throw Error("サブセット処理を初期化できません。");
+      if (!input)
+        throw {
+          kind: "message",
+          key: "errors.subsetInit",
+          params: {},
+        } satisfies KeyMessage;
       const unicodes = hb.hb_subset_input_unicode_set(input);
       for (const c of data.characters as string)
         hb.hb_set_add(unicodes, c.codePointAt(0));
@@ -43,15 +55,32 @@ function subsetWorker() {
       hb.hb_set_clear(features);
       hb.hb_set_invert(features);
       subset = hb.hb_subset_or_fail(face, input);
-      if (!subset) throw Error("フォントのサブセット作成に失敗しました。");
+      if (!subset)
+        throw {
+          kind: "message",
+          key: "errors.subsetFailed",
+          params: {},
+        } satisfies KeyMessage;
       result = hb.hb_face_reference_blob(subset);
       const offset = hb.hb_blob_get_data(result, 0);
       const length = hb.hb_blob_get_length(result);
-      if (!length) throw Error("サブセットが空です。");
+      if (!length)
+        throw {
+          kind: "message",
+          key: "errors.subsetEmpty",
+          params: {},
+        } satisfies KeyMessage;
       const bytes = new Uint8Array(hb.memory.buffer, offset, length).slice();
       scope.postMessage({ bytes }, [bytes.buffer]);
     } catch (e) {
-      scope.postMessage({ error: e instanceof Error ? e.message : String(e) });
+      scope.postMessage({
+        error:
+          e && typeof e === "object" && "kind" in e
+            ? e
+            : e instanceof Error
+              ? e.message
+              : String(e),
+      });
     } finally {
       if (hb) {
         if (result) hb.hb_blob_destroy(result);
@@ -111,7 +140,7 @@ export function createFontSubsetter(check = () => {}, timeoutMs = 15000) {
         const verify = () => {
           check();
           if (Date.now() >= deadline)
-            throw Error("フォントの軽量化が15秒以内に完了しませんでした。");
+            throw new AppError(msg("errors.subsetTimeout"));
         };
         const poll = () => {
           try {
@@ -128,9 +157,9 @@ export function createFontSubsetter(check = () => {}, timeoutMs = 15000) {
         active.onmessage = ({ data }) => {
           try {
             verify();
-            if (data.error) throw Error(data.error);
+            if (data.error) throw new AppError(data.error);
             if (!(data.bytes instanceof Uint8Array) || !data.bytes.length)
-              throw Error("サブセットの応答が不正です。");
+              throw new AppError(msg("errors.subsetResponse"));
             finish(undefined, data.bytes);
           } catch (e) {
             finish(e);
@@ -138,10 +167,10 @@ export function createFontSubsetter(check = () => {}, timeoutMs = 15000) {
         };
         active.onerror = (event) => {
           event.preventDefault();
-          finish(Error(event.message || "フォント処理を実行できません。"));
+          finish(new AppError(event.message || msg("errors.fontProcessing")));
         };
         active.onmessageerror = () =>
-          finish(Error("フォント処理の応答を読み取れません。"));
+          finish(new AppError(msg("errors.fontResponse")));
         poll();
         if (!finished) {
           try {

@@ -81,7 +81,11 @@ test("range export cancellation and completion", async (t) => {
               key: "0",
               characters: "x",
               segments: [],
-              fallbackReason: "フォントを登録してください。",
+              fallbackReason: {
+                kind: "message",
+                key: "errors.registerFont",
+                params: {},
+              },
             },
           },
         ],

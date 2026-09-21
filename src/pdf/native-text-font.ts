@@ -1,3 +1,5 @@
+import { AppError } from "../shared/errors";
+import { msg } from "../shared/messages";
 import { PDFDocument, PDFName } from "pdf-lib";
 import { unicodeHex } from "./cid-font";
 
@@ -44,7 +46,7 @@ export function nativeTextGlyph(
     box.height = bottom - box.y;
   }
   if (box.width <= 0 || box.height <= 0)
-    throw Error("代替文字の可視字形がありません。");
+    throw new AppError(msg("errors.nativeGlyphMissing"));
   svg.setAttribute("viewBox", `${box.x} ${box.y} ${box.width} ${box.height}`);
   svg.setAttribute("width", String(box.width));
   svg.setAttribute("height", String(box.height));
@@ -70,10 +72,10 @@ export async function embedNativeTextFont(
     box.width <= 0 ||
     box.height <= 0
   )
-    throw Error("代替フォントの字形または文字情報が不正です。");
+    throw new AppError(msg("errors.nativeFontData"));
   const source = await PDFDocument.load(pdf);
   if (source.getPageCount() !== 1)
-    throw Error("代替フォントの字形ページが不正です。");
+    throw new AppError(msg("errors.nativeGlyphPage"));
   const [glyph] = await document.embedPages([source.getPage(0)]);
   const ctx = document.context;
   const x = box.x - anchor.x;

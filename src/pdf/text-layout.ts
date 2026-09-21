@@ -1,3 +1,5 @@
+import { AppError } from "../shared/errors";
+import { msg } from "../shared/messages";
 import { fontKey, type TextAsset, type TextSegment } from "../shared/protocol";
 import type { RegisteredFont } from "./create-pdf";
 export interface SourceChar {
@@ -135,7 +137,7 @@ export function readRuns(
         /^\s*(?:[•◦▪●○‣]|\d+[.)])\s*$/.test(display)
       )
         marker = true;
-      else throw Error("SVG の文字と元の文字範囲を対応付けできません。");
+      else throw new AppError(msg("errors.svgTextMapping"));
     }
     const groups: {
       display: string;
@@ -261,7 +263,7 @@ export function readRuns(
       ].every(Number.isFinite) ||
       run.size <= 0
     )
-      throw Error("文字の配置を取得できません。");
+      throw new AppError(msg("errors.textPositions"));
   }
   return runs;
 }

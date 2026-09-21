@@ -1,23 +1,25 @@
+import { type Message, msg } from "./messages";
+import { AppError } from "./errors";
 /** Bound external waits and let cancellation run while Figma is rendering. */
 export function operationBudget(
   check: () => void,
   milliseconds = 15000,
-  notify: (stage: string) => void = () => {},
-  timeoutMessage = (stage: string) =>
-    `省略文字の変換が制限時間を超えました（${stage}）。処理を中止しました。`,
+  notify: (stage: Message) => void = () => {},
+  timeoutMessage = (stage: Message) =>
+    msg("errors.truncationTimeout", { stage }),
 ) {
   const deadline = Date.now() + milliseconds;
-  const verify = (stage: string) => {
+  const verify = (stage: Message) => {
     check();
     if (Date.now() >= deadline) {
-      const error = new Error(timeoutMessage(stage));
+      const error = new AppError(timeoutMessage(stage));
       error.name = "OperationTimeoutError";
       throw error;
     }
   };
   return {
     check: verify,
-    async run<T>(stage: string, start: () => Promise<T>): Promise<T> {
+    async run<T>(stage: Message, start: () => Promise<T>): Promise<T> {
       verify(stage);
       notify(stage);
       return new Promise<T>((resolve, reject) => {

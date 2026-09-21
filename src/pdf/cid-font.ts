@@ -1,3 +1,5 @@
+import { type Message, msg } from "../shared/messages";
+import { errorMessage, AppError } from "../shared/errors";
 import { PDFDocument, PDFName, PDFRef, PDFString } from "pdf-lib";
 import type { RegisteredFont } from "./create-pdf";
 import { createFontSubsetter } from "../fonts/font-subset";
@@ -24,12 +26,12 @@ export class CIDFont {
   }
   code(gid: number, unicode: string) {
     if (!Number.isInteger(gid) || gid <= 0 || gid > 65535)
-      throw Error("登録フォントに必要な字形がありません。");
+      throw new AppError(msg("errors.missingGlyph"));
     const key = JSON.stringify([gid, unicode]);
     let cid = this.codes.get(key);
     if (cid === undefined) {
       cid = this.entries.length;
-      if (cid > 65535) throw Error("PDF フォントの文字数の上限を超えました。");
+      if (cid > 65535) throw new AppError(msg("errors.cidLimit"));
       this.entries.push({ gid, unicode });
       this.codes.set(key, cid);
     }
@@ -38,7 +40,7 @@ export class CIDFont {
   async embed(
     subsetter: ReturnType<typeof createFontSubsetter>,
     check: () => void,
-    warning: (m: string) => void,
+    warning: (m: Message) => void,
   ) {
     const parsed = this.font.parsed,
       upm = parsed.unitsPerEm;
@@ -59,14 +61,12 @@ export class CIDFont {
               parsed.glyphs.get(g).advanceWidth,
         )
       )
-        throw Error("字形の番号または幅を保持できませんでした。");
+        throw new AppError(msg("errors.glyphMetrics"));
       bytes = subset;
       isSubset = true;
     } catch (e) {
       check();
-      warning(
-        `フォントの軽量化に失敗したため完全なフォントを埋め込みました: ${e instanceof Error ? e.message : String(e)}`,
-      );
+      warning(msg("fonts.fullEmbedding", { reason: errorMessage(e) }));
     }
     const ctx = this.document.context;
     const prefix = this.index

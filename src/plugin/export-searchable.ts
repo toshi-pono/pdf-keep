@@ -1,3 +1,5 @@
+import { type Message, joinMessages, msg } from "../shared/messages";
+import { AppError, errorMessage } from "../shared/errors";
 import { TemporaryExport } from "./temporary";
 import { inspect, visible, fontsFor } from "./inspect";
 import { materializeTruncatedText } from "./truncated-text";
@@ -10,7 +12,6 @@ import {
   type TextRangeRequest,
   type TextRangeResult,
 } from "../shared/protocol";
-import { errorMessage } from "../shared/errors";
 
 export function textSegments(node: TextNode): TextSegment[] {
   let offset = 0;
@@ -35,9 +36,9 @@ export function textSegments(node: TextNode): TextSegment[] {
         (f) => f.visible !== false && (f.opacity ?? 1) > 0,
       );
       const fallbackReason = paints.some((f) => f.type !== "SOLID")
-        ? "文字のグラデーション・画像塗りは未対応です。"
+        ? msg("errors.textFill")
         : paints.length > 1
-          ? "複数の文字塗りは未対応です。"
+          ? msg("errors.multipleFills")
           : undefined;
       return {
         start,
@@ -154,15 +155,41 @@ export async function exportSearchableFrame(
       (d) =>
         d.nodeId === n.id &&
         blocks(d, "pdf") &&
-        !/文字のグラデーション・画像塗り|非表示の文字範囲、または複数の文字塗り|Figma 側で使用フォントが不足/.test(
-          d.reason,
+        !(
+          typeof d.reason !== "string" &&
+          d.reason.kind === "message" &&
+          [
+            "errors.textFill",
+            "errors.hiddenOrMultipleFills",
+            "errors.figmaFontMissing",
+          ].includes(d.reason.key)
         ),
     );
     if (failures.length && !outlineFallback)
-      throw Error(`${n.name}: ${failures.map((d) => d.reason).join("\n")}`);
-    let reason = failures.map((d) => d.reason).join("\n") || undefined;
-    const ancestor = failures.some((d) =>
-      /親|マスク|Clip|Frame|角丸|描画モード|影・ぼかし/.test(d.reason),
+      throw new AppError(
+        joinMessages(
+          [`${n.name}: `, joinMessages(failures.map((d) => d.reason))],
+          "",
+        ),
+      );
+    let reason: Message | undefined = failures.length
+      ? joinMessages(failures.map((d) => d.reason))
+      : undefined;
+    const ancestor = failures.some(
+      (d) =>
+        typeof d.reason !== "string" &&
+        d.reason.kind === "message" &&
+        [
+          "errors.parentOpacity",
+          "errors.textMask",
+          "errors.siblingMask",
+          "errors.clipBoundary",
+          "errors.textOutsideFrame",
+          "errors.roundedClip",
+          "errors.blendMode",
+          "errors.effects",
+          "errors.parentStroke",
+        ].includes(d.reason.key),
     );
     if (ancestor && !pristine) {
       pristine = copy.clone();
@@ -184,7 +211,10 @@ export async function exportSearchableFrame(
             send({
               type: "progress",
               id,
-              message: `省略文字: ${stage} — ${n.name}`,
+              message: msg("progress.truncatedText", {
+                stage,
+                name: n.name,
+              }),
             }),
         );
       } catch (e) {
@@ -272,7 +302,7 @@ export async function exportSearchableFrame(
   for (const [n, path] of paths)
     if (n.type === "TEXT_PATH" && visible(n)) {
       if (!outlineFallback)
-        throw Error(`${n.name}: パス上の文字の配置を取得できません。`);
+        throw new AppError(msg("errors.namedTextPath", { name: n.name }));
       if (!pristine) {
         pristine = copy.clone();
         temporary.add(pristine);
@@ -293,7 +323,7 @@ export async function exportSearchableFrame(
           key,
           characters: "",
           segments: [],
-          fallbackReason: "パス上の文字の配置を取得できません。",
+          fallbackReason: msg("errors.textPathPosition"),
           composition: true,
         },
       });
@@ -307,7 +337,7 @@ export async function exportSearchableFrame(
     if ("children" in node) for (const child of node.children) strip(child);
   };
   strip(copy);
-  send({ type: "progress", id, message: "背景を安全に焼き込み中…" });
+  send({ type: "progress", id, message: msg("progress.background") });
   bundle.png = await temporary.export(wrapper, {
     format: "PNG",
     constraint:
@@ -337,7 +367,7 @@ export async function exportSearchableFrame(
   };
   const verify = () => {
     check();
-    if (closed) throw Error("キャンセルしました。");
+    if (closed) throw new AppError(msg("operation.cancelled"));
   };
   const touch = () => {
     clearTimeout(timer);
@@ -351,7 +381,7 @@ export async function exportSearchableFrame(
       const work = queue
         .then(() =>
           temporary.run(
-            "文字範囲の取得",
+            msg("progress.textRange"),
             async (verifyRange) => {
               verifyRange();
               const source = sources.get(request.key);
@@ -359,14 +389,14 @@ export async function exportSearchableFrame(
                 (!source && !composition.has(request.key)) ||
                 !["svg", "pdf"].includes(request.format)
               )
-                throw Error("文字範囲の要求が不正です。");
+                throw new AppError(msg("errors.invalidRange"));
               if (composition.has(request.key)) {
                 if (
                   request.format !== "pdf" ||
                   request.start !== undefined ||
                   request.end !== undefined
                 )
-                  throw Error("合成を含む文字はレイヤー単位で保持します。");
+                  throw new AppError(msg("errors.compositedLayer"));
                 const cacheKey = JSON.stringify([request.key, "composition"]);
                 const cached = rangePDFs.get(cacheKey);
                 if (cached) return cached;
@@ -397,7 +427,7 @@ export async function exportSearchableFrame(
                 end <= start ||
                 end > source!.characters.length
               )
-                throw Error("文字範囲の要求が不正です。");
+                throw new AppError(msg("errors.invalidRange"));
               const cacheKey = JSON.stringify([request.key, start, end]);
               const cachedPDF = rangePDFs.get(cacheKey);
               if (request.format === "pdf" && cachedPDF) return cachedPDF;
@@ -448,7 +478,7 @@ export async function exportSearchableFrame(
                       ),
                   );
                   if (/<(?:[\w.-]+:)?(?:text|tspan|textPath)\b/i.test(svg))
-                    throw Error("文字のアウトライン化に失敗しました。");
+                    throw new AppError(msg("errors.outlineConversion"));
                   rangeSVGs.set(cacheKey, svg);
                 }
                 if (request.format === "svg") return { svg };

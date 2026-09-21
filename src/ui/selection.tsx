@@ -1,9 +1,10 @@
+import { msg } from "../shared/messages";
 import type { PluginUI } from "./use-plugin-ui";
 export function Selection({ ui }: { ui: PluginUI }) {
   const { state, t } = ui;
   return (
     <section className="selection-section">
-      <h2>{t("選択中のフレーム")}</h2>
+      <h2>{t(msg("selection.frame"))}</h2>
       <div className="selection-card">
         <svg
           width="24"
@@ -21,7 +22,7 @@ export function Selection({ ui }: { ui: PluginUI }) {
           <div id="selection">
             {state.selection?.valid
               ? state.selection.name
-              : t(state.selection?.name ?? "Frame を一つ選択してください")}
+              : t(state.selection?.label ?? msg("selection.empty"))}
           </div>
           <div id="dimensions" className="muted">
             {state.selection?.width && state.selection.height
@@ -33,8 +34,8 @@ export function Selection({ ui }: { ui: PluginUI }) {
           id="refresh"
           className="icon-button"
           disabled={ui.busy}
-          aria-label={t("選択を再検査")}
-          title={t("選択を再検査")}
+          aria-label={t(msg("selection.refresh"))}
+          title={t(msg("selection.refresh"))}
           onClick={ui.refresh}
         >
           ↻

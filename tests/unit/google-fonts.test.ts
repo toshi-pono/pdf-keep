@@ -1,3 +1,4 @@
+import { msg } from "../../src/shared/messages";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -39,9 +40,12 @@ test("catalog resolves exact weights and italics for common English and Japanese
   );
   assert.throws(
     () => googleFontURL({ ...font, family: "Private Font" }),
-    /対象外/,
+    /errors.googleFontUnsupported/,
   );
-  assert.throws(() => googleFontURL({ ...font, weight: 405 }), /対象外/);
+  assert.throws(
+    () => googleFontURL({ ...font, weight: 405 }),
+    /errors.googleFontUnsupported/,
+  );
 });
 test("catalog accepts legacy family names without substituting widths or unavailable styles", () => {
   for (const [alias, family] of [
@@ -62,11 +66,11 @@ test("catalog accepts legacy family names without substituting widths or unavail
   );
   assert.throws(
     () => googleFontURL({ ...font, family: "Noto Sans JP Thin", italic: true }),
-    /対象外/,
+    /errors.googleFontUnsupported/,
   );
   assert.throws(
     () => googleFontURL({ ...font, family: "Inter Condensed" }),
-    /対象外/,
+    /errors.googleFontUnsupported/,
   );
 });
 test("Figma's plain-object failures are readable and downloads can be retried", async () => {
@@ -74,16 +78,25 @@ test("Figma's plain-object failures are readable and downloads can be retried", 
   const request = (async () => {
     throw { message: "Failed to fetch" };
   }) as typeof fetch;
-  await assert.rejects(
-    downloadGoogleFont(font, request),
-    /再取得.*Failed to fetch/,
-  );
+  await assert.rejects(downloadGoogleFont(font, request), (error: unknown) => {
+    assert.deepEqual(
+      errorMessage(error),
+      msg("errors.googleFontConnection", { reason: "Failed to fetch" }),
+    );
+    return true;
+  });
   await assert.rejects(
     downloadGoogleFont(
       font,
       (async () => new Response("", { status: 404 })) as typeof fetch,
     ),
-    /HTTP 404/,
+    (error: unknown) => {
+      assert.deepEqual(
+        errorMessage(error),
+        msg("errors.googleFontHttp", { status: 404 }),
+      );
+      return true;
+    },
   );
   assert.equal(
     (

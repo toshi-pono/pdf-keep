@@ -1,10 +1,11 @@
+import { sameMessage, type Message } from "../shared/messages";
 import type { TextAsset, TextRangeRequest } from "../shared/protocol";
 interface Mergeable {
   type: string;
   asset: TextAsset;
   range?: TextRangeRequest;
   clip?: unknown;
-  reason?: string;
+  reason?: Message;
   proofRun?: object;
 }
 /** Only adjacent failures from the same shaping run may share one native export. */
@@ -21,7 +22,7 @@ export function coalesceOutlines<T extends Mergeable>(parts: T[]): T[] {
       !part.asset.source?.composition &&
       !part.clip &&
       !previous.clip &&
-      part.reason === previous.reason &&
+      sameMessage(part.reason, previous.reason) &&
       part.range?.format === "pdf" &&
       previous.range?.format === "pdf" &&
       part.range.key === previous.range.key &&

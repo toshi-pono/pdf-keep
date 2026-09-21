@@ -1,3 +1,5 @@
+import { createI18n, formatMessage } from "../../src/ui/i18n";
+const i18n = createI18n("ja");
 import test from "node:test";
 import assert from "node:assert/strict";
 import { blocks } from "../../src/shared/protocol";
@@ -56,7 +58,7 @@ test("possible foreground overlap is a nonblocking warning", () => {
   const { f } = scene();
   f.children.push(node("RECTANGLE", 15, 15));
   const diagnostic = inspect(f).diagnostics[0];
-  assert.match(diagnostic.reason, /前面/);
+  assert.match(formatMessage(diagnostic.reason, i18n), /前面/);
   assert.equal(diagnostic.severity, "warning");
   assert(!blocks(diagnostic, "frame"));
   assert(!blocks(diagnostic, "pdf"));
@@ -80,7 +82,10 @@ test("zero opacity and unpainted text are omitted", () => {
 test("clipped text remains rejected while rotation is supported", () => {
   const { f, t } = scene();
   t.absoluteRenderBounds.x = -5;
-  assert.match(inspect(f).diagnostics[0].reason, /Frame|Clip/);
+  assert.match(
+    formatMessage(inspect(f).diagnostics[0].reason, i18n),
+    /Frame|Clip/,
+  );
   t.absoluteTransform = [
     [0, -1, 10],
     [1, 0, 10],
@@ -95,7 +100,7 @@ test("masks and effects on retained text are rejected", () => {
   m.isMask = true;
   f.children.unshift(m);
   const reasons = inspect(f)
-    .diagnostics.map((d) => d.reason)
+    .diagnostics.map((d) => formatMessage(d.reason, i18n))
     .join();
   assert.match(reasons, /マスク/);
   assert.match(reasons, /効果/);
@@ -129,7 +134,7 @@ test("transformed parent is supported while unsupported compositing stays guarde
   g.opacity = 0.5;
   assert(
     inspect(f).diagnostics.some(
-      (d) => !d.destination && d.reason.includes("半透明"),
+      (d) => !d.destination && formatMessage(d.reason, i18n).includes("半透明"),
     ),
   );
 });

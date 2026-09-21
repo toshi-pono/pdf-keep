@@ -1,3 +1,4 @@
+import { msg } from "../shared/messages";
 import { useRef } from "react";
 import { Help } from "./help";
 import type { FontRowState, PluginUI } from "./use-plugin-ui";
@@ -16,15 +17,23 @@ function FontRow({ row, ui }: { row: FontRowState; ui: PluginUI }) {
           <span className="font-style">{row.font.style}</span>
         </span>
         {row.error && !row.ready ? (
-          <Help label={t("フォントの取得エラー")}>{t(row.error)}</Help>
+          <Help label={t(msg("fonts.downloadError"))}>{t(row.error)}</Help>
         ) : (
           <span
             className={`font-badge ${row.ready ? "ready" : row.pending ? "" : "missing"}`}
             aria-label={t(
-              row.ready ? "✓ 準備完了" : row.pending ? "取得中…" : "未取得",
+              row.ready
+                ? msg("fonts.ready")
+                : row.pending
+                  ? msg("fonts.fetching")
+                  : msg("fonts.missing"),
             )}
             title={t(
-              row.ready ? "✓ 準備完了" : row.pending ? "取得中…" : "未取得",
+              row.ready
+                ? msg("fonts.ready")
+                : row.pending
+                  ? msg("fonts.fetching")
+                  : msg("fonts.missing"),
             )}
           >
             {row.ready ? "✓" : row.pending ? "…" : "!"}
@@ -47,22 +56,22 @@ function FontRow({ row, ui }: { row: FontRowState; ui: PluginUI }) {
       <div className="font-controls">
         {row.ready ? (
           <>
-            <label className="check" title={t("この端末に保存")}>
+            <label className="check" title={t(msg("fonts.saveDevice"))}>
               <input
                 type="checkbox"
-                aria-label={`${row.font.family} ${row.font.style}: ${t("この端末に保存")}`}
+                aria-label={`${row.font.family} ${row.font.style}: ${t(msg("fonts.saveDevice"))}`}
                 checked={row.saved}
                 disabled={busy}
                 onChange={(event) =>
                   ui.saveFont(row.key, event.currentTarget.checked)
                 }
               />
-              {t("保存")}
+              {t(msg("actions.save"))}
             </label>
             <button
               className="font-remove"
-              aria-label={`${row.font.family} ${row.font.style}: ${t("削除")}`}
-              title={t("削除")}
+              aria-label={`${row.font.family} ${row.font.style}: ${t(msg("actions.remove"))}`}
+              title={t(msg("actions.remove"))}
               disabled={busy}
               onClick={() => ui.removeFont(row.key)}
             >
@@ -86,7 +95,7 @@ function FontRow({ row, ui }: { row: FontRowState; ui: PluginUI }) {
               disabled={busy}
               onClick={() => input.current?.click()}
             >
-              {t("TTF を追加")}
+              {t(msg("fonts.addTtf"))}
             </button>
           )
         )}
@@ -104,13 +113,11 @@ export function FontSettings({ ui }: { ui: PluginUI }) {
         <section className="font-section">
           <div className="section-heading">
             <div className="section-title">
-              <span>{t("PDF のフォント")}</span>
-              <Help label={t("フォントの追加について")}>
-                {t(
-                  "Google Fonts は自動取得します。その他のフォントは TTF を追加してください。",
-                )}
+              <span>{t(msg("fonts.pdfFonts"))}</span>
+              <Help label={t(msg("fonts.addHelp"))}>
+                {t(msg("fonts.addDescription"))}
                 <br />
-                {t("Google への送信はフォント名・スタイルのみ。")}
+                {t(msg("fonts.privacy"))}
               </Help>
             </div>
             <button
@@ -119,7 +126,7 @@ export function FontSettings({ ui }: { ui: PluginUI }) {
               disabled={ui.retryDisabled}
               onClick={ui.retryFonts}
             >
-              {t("再取得")}
+              {t(msg("actions.retry"))}
             </button>
           </div>
           <div id="font-status" className="muted" role="status">
@@ -128,14 +135,14 @@ export function FontSettings({ ui }: { ui: PluginUI }) {
           <div
             id="fonts"
             role="region"
-            aria-label={t("PDF のフォント")}
+            aria-label={t(msg("fonts.pdfFonts"))}
             tabIndex={ui.fontRows.length ? 0 : undefined}
           >
             {ui.fontRows.length
               ? ui.fontRows.map((row) => (
                   <FontRow key={row.key} row={row} ui={ui} />
                 ))
-              : t("文字レイヤーはありません。")}
+              : t(msg("fonts.noText"))}
           </div>
           <div className="font-import">
             <button
@@ -144,7 +151,7 @@ export function FontSettings({ ui }: { ui: PluginUI }) {
               disabled={busy}
               onClick={() => input.current?.click()}
             >
-              {t("＋ TTF を追加")}
+              {t(msg("fonts.addTtfPlus"))}
             </button>
             <input
               ref={input}
@@ -154,7 +161,7 @@ export function FontSettings({ ui }: { ui: PluginUI }) {
               accept=".ttf"
               multiple
               disabled={busy}
-              aria-label={t("TTF をまとめて追加")}
+              aria-label={t(msg("fonts.addFiles"))}
               onChange={(event) => {
                 const files = Array.from(event.currentTarget.files ?? []);
                 event.currentTarget.value = "";
@@ -171,12 +178,12 @@ export function FontSettings({ ui }: { ui: PluginUI }) {
                   patch({ bulkSave: event.currentTarget.checked })
                 }
               />
-              {t("追加時にこの端末へ保存")}
+              {t(msg("fonts.saveOnAdd"))}
             </label>
           </div>
         </section>
         <section className="raster-section">
-          <h2>{t("文字の処理")}</h2>
+          <h2>{t(msg("text.handling"))}</h2>
           <div className="processing-row">
             <label className="check">
               <input
@@ -188,18 +195,14 @@ export function FontSettings({ ui }: { ui: PluginUI }) {
                   patch({ outlineFallback: e.currentTarget.checked })
                 }
               />
-              <span>{t("未対応の文字はアウトラインで PDF 出力")}</span>
+              <span>{t(msg("outlines.enable"))}</span>
             </label>
-            <Help label={t("アウトラインについて")}>
-              {t(
-                "再現できない範囲だけをアウトラインにします。その範囲以外の文字は検索・コピーできます。",
-              )}
+            <Help label={t(msg("outlines.help"))}>
+              {t(msg("outlines.description"))}
             </Help>
           </div>
           <p id="outline-notice" hidden={!ui.needsOutline}>
-            {t(
-              "再現できない範囲だけをアウトラインで保持します。フォントを追加するとコピー可能な文字が増えます。",
-            )}
+            {t(msg("outlines.addFonts"))}
           </p>
           <div className="processing-row">
             <label id="rasterlabel" className="check">
@@ -210,10 +213,10 @@ export function FontSettings({ ui }: { ui: PluginUI }) {
                 disabled={busy}
                 onChange={(e) => patch({ raster: e.currentTarget.checked })}
               />
-              <span>{t("全文字を画像化する")}</span>
+              <span>{t(msg("raster.enable"))}</span>
             </label>
-            <Help label={t("画像化について")}>
-              {t("文字の検索・コピーはできなくなります。")}
+            <Help label={t(msg("raster.help"))}>
+              {t(msg("raster.warning"))}
             </Help>
           </div>
         </section>

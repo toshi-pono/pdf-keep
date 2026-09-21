@@ -1,3 +1,4 @@
+import { msg } from "../shared/messages";
 import type { PluginUI } from "./use-plugin-ui";
 import { Help } from "./help";
 import { QUALITY_FACTORS } from "../shared/resolution";
@@ -16,8 +17,12 @@ export function QualitySettings({ ui }: { ui: PluginUI }) {
   };
   return (
     <section className="quality-section">
-      <h2>{t("画像の画質")}</h2>
-      <div className="scale-presets" role="group" aria-label={t("画像の画質")}>
+      <h2>{t(msg("quality.imageQuality"))}</h2>
+      <div
+        className="scale-presets"
+        role="group"
+        aria-label={t(msg("quality.imageQuality"))}
+      >
         {(["sharp", "medium", "light", "manual"] as const).map((value) => (
           <button
             type="button"
@@ -27,7 +32,7 @@ export function QualitySettings({ ui }: { ui: PluginUI }) {
             disabled={busy}
             onClick={() => patch({ quality: value })}
           >
-            {value[0].toUpperCase() + value.slice(1)}
+            {t(msg(`quality.${value}`))}
           </button>
         ))}
       </div>
@@ -35,10 +40,10 @@ export function QualitySettings({ ui }: { ui: PluginUI }) {
         className="setting-row scale-custom"
         hidden={state.quality !== "manual"}
       >
-        <label htmlFor="scale">{t("倍率を指定")}</label>
+        <label htmlFor="scale">{t(msg("quality.customScale"))}</label>
         <div className="stepper">
           <button
-            aria-label={t("倍率を下げる")}
+            aria-label={t(msg("quality.decrease"))}
             disabled={busy}
             onClick={() => adjust(-0.25)}
           >
@@ -46,18 +51,20 @@ export function QualitySettings({ ui }: { ui: PluginUI }) {
           </button>
           <input
             id="scale"
-            aria-label={t("倍率を指定")}
+            aria-label={t(msg("quality.customScale"))}
             type="number"
             min="0.01"
             step="any"
-            placeholder={state.scale === "custom" ? t("px指定") : "1"}
+            placeholder={
+              state.scale === "custom" ? t(msg("quality.pixels")) : "1"
+            }
             value={state.scale === "custom" ? "" : state.scale}
             disabled={busy}
             onChange={(e) => patch({ scale: e.currentTarget.value })}
           />
           <span aria-hidden="true">×</span>
           <button
-            aria-label={t("倍率を上げる")}
+            aria-label={t(msg("quality.increase"))}
             disabled={busy}
             onClick={() => adjust(0.25)}
           >
@@ -68,11 +75,15 @@ export function QualitySettings({ ui }: { ui: PluginUI }) {
       <div className="output-summary" aria-live="polite">
         {state.quality !== "manual" && (
           <div className="quality-reference">
-            {state.paper} {t(state.orientation === "portrait" ? "縦" : "横")} ·{" "}
-            {300 * QUALITY_FACTORS[state.quality]} dpi {t("目標")}
-            {ui.qualityLimited && (
-              <span> · {t("拡大・画像サイズ上限で調整")}</span>
-            )}
+            {state.paper}{" "}
+            {t(
+              state.orientation === "portrait"
+                ? msg("quality.portrait")
+                : msg("quality.landscape"),
+            )}{" "}
+            · {300 * QUALITY_FACTORS[state.quality]} dpi{" "}
+            {t(msg("quality.target"))}
+            {ui.qualityLimited && <span> · {t(msg("quality.limited"))}</span>}
           </div>
         )}
         <div id="scale-hint" className="muted">
@@ -80,7 +91,7 @@ export function QualitySettings({ ui }: { ui: PluginUI }) {
         </div>
         <div id="pdf-size-estimate" hidden={!ui.sizeLabel}>
           <span id="pdf-size">{ui.sizeLabel}</span>
-          <Help label={t("推定容量について")}>
+          <Help label={t(msg("estimate.help"))}>
             <span id="pdf-size-note">{ui.sizeNote}</span>
           </Help>
         </div>

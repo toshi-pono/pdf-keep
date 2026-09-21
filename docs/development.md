@@ -73,7 +73,7 @@ Screenshots, comparisons, and extracted data go to `tmp/qa/`; generated PDFs go 
 | `assets/`                                             | Published logo and README teaser images                          |
 | `licenses/`                                           | Third-party notices                                              |
 
-Japanese and English UI strings live in `src/ui/translations.json`. The UI entry point is `src/ui/index.tsx`; the Figma sandbox entry point is `src/plugin/main.ts`.
+Japanese, English, and Korean translations live in `src/i18n/locales/`. Supported languages and labels are centralized in `src/i18n/languages.ts`; `src/ui/i18n.ts` initializes i18next/react-i18next. Application messages use typed keys and named parameters from `src/shared/messages.ts` throughout plugin/worker communication. Language preferences are stored separately from fonts in Figma client storage. See the README’s Languages section for the extension workflow. The UI entry point is `src/ui/index.tsx`; the Figma sandbox entry point is `src/plugin/main.ts`.
 
 ## Save flow and UI feedback
 

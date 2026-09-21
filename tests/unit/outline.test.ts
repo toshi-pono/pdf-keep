@@ -133,7 +133,7 @@ test("text left in the SVG is rejected and the temporary clone is removed", asyn
       temporary as unknown as TemporaryExport,
       () => {},
     ),
-    /アウトライン/,
+    /errors.outlineConversion/,
   );
   assert(clone.removed);
   assert.equal(temporary.size, 0);
