@@ -1,6 +1,6 @@
 {
   "name": "pdf-keep",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A Figma plugin for exporting lightweight PDFs with flattened backgrounds and searchable, copyable text.",
   "repository": {
     "type": "git",

@@ -1,5 +1,12 @@
 # Release Notes
 
+## 0.1.2 — Light and Dark Theme Improvements
+
+- Improved automatic matching of Figma's light and dark themes, including native form controls and scrollbars.
+- Updated tooltip and warning colors for readability in both themes.
+- Theme changes apply immediately without resetting your settings or selected tab.
+- Added direct Figma Community installation links to the English and Japanese READMEs.
+
 ## 0.1.1 — Korean Language Support
 
 - Added Korean support across the interface, including progress messages, warnings, and errors.
