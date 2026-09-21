@@ -127,7 +127,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on pushes and pull requests. Se
 
 ## Figma Community publication
 
-`manifest.json`'s `api: "1.0.0"` selects the Figma API version. It is independent of the product version in `package.json` and `package-lock.json`, currently both `0.1.0`. Do not copy the package version into `api` or add a product `version` field to the manifest. Use `npm version patch --no-git-tag-version` when intentionally bumping a patch release; this updates both package files. The npm `private: true` setting prevents npm publication and can stay enabled for a Figma plugin. See the [manifest specification](https://developers.figma.com/docs/plugins/manifest/).
+`manifest.json`'s `api: "1.0.0"` selects the Figma API version. It is independent of the product version in `package.json` and `package-lock.json`, currently both `0.1.1`. Do not copy the package version into `api` or add a product `version` field to the manifest. Use `npm version patch --no-git-tag-version` when intentionally bumping a patch release; this updates both package files. The npm `private: true` setting prevents npm publication and can stay enabled for a Figma plugin. See the [manifest specification](https://developers.figma.com/docs/plugins/manifest/).
 
 Before the first Community submission:
 

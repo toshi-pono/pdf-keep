@@ -9,6 +9,7 @@ const files = [
   "dist/ui.html",
   "README.md",
   "README_ja.md",
+  "CHANGELOG.md",
   "LICENSE",
   "docs/development.md",
   "assets/logo.png",
