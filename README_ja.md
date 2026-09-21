@@ -2,10 +2,13 @@
 
 [![CI](https://github.com/toshi-pono/pdf-keep/actions/workflows/ci.yml/badge.svg)](https://github.com/toshi-pono/pdf-keep/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Figma Community](https://img.shields.io/badge/Figma-Community-F24E1E?logo=figma&logoColor=white)](https://www.figma.com/community/plugin/1681089320786833087/pdf-keep)
 
 ![PDF Keep — 画像をひとつに。余計な情報を残さず、軽い PDF に。](assets/teaser-en.png)
 
 Figma の画像・図形を一枚の背景にまとめ、対応する文字を検索・コピー可能なまま残すプラグインです。背景の解像度調整と埋め込みフォントの軽量化で、元の背景画像や個別の背景レイヤーを持ち込まずに、共有しやすい PDF を作成します。容量の削減量はデザインと設定によって異なります。
+
+[Figma Community で PDF Keep を使う](https://www.figma.com/community/plugin/1681089320786833087/pdf-keep)
 
 [English](README.md)
 

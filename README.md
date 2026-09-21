@@ -2,10 +2,13 @@
 
 [![CI](https://github.com/toshi-pono/pdf-keep/actions/workflows/ci.yml/badge.svg)](https://github.com/toshi-pono/pdf-keep/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Figma Community](https://img.shields.io/badge/Figma-Community-F24E1E?logo=figma&logoColor=white)](https://www.figma.com/community/plugin/1681089320786833087/pdf-keep)
 
 ![PDF Keep — flatten backgrounds and keep useful text](assets/teaser-en.png)
 
 A Figma plugin that combines images and shapes into one background while keeping supported text searchable and copyable. Adjust the background resolution and subset embedded fonts to create smaller PDFs without carrying over original background images or separate background layers. File-size savings depend on the design and settings.
+
+Get PDF Keep on [Figma Community](https://www.figma.com/community/plugin/1681089320786833087/pdf-keep).
 
 [日本語](README_ja.md)
 
